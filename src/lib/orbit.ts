@@ -2,7 +2,7 @@ import * as satellite from 'satellite.js';
 import type { CelestrakGP, SatellitePosition, ECIPosition } from '../types/satellite';
 
 // Earth radius in km (WGS84)
-const EARTH_RADIUS_KM = 6378.137;
+export const EARTH_RADIUS_KM = 6378.137;
 
 // Convert GP JSON or raw TLE lines to satellite.js satrec
 export function createSatrec(source: CelestrakGP | { line1: string; line2: string }): satellite.SatRec {

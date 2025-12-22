@@ -5,6 +5,8 @@ interface TimelineSliderProps {
   onTimeChange: (time: Date) => void;
   onNow?: () => void;
   rangeDays?: number;
+  anchorTime?: Date;
+  showNow?: boolean;
 }
 
 const SPEEDS = [1, 10, 100, 1000];
@@ -14,13 +16,15 @@ export function TimelineSlider({
   onTimeChange,
   onNow,
   rangeDays = 5,
+  anchorTime,
+  showNow = true,
 }: TimelineSliderProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedIndex, setSpeedIndex] = useState(1); // Default 10x
 
-  const now = new Date();
-  const minTime = now.getTime() - rangeDays * 24 * 60 * 60 * 1000;
-  const maxTime = now.getTime() + rangeDays * 24 * 60 * 60 * 1000;
+  const anchor = anchorTime ?? new Date();
+  const minTime = anchor.getTime() - rangeDays * 24 * 60 * 60 * 1000;
+  const maxTime = anchor.getTime() + rangeDays * 24 * 60 * 60 * 1000;
   const totalRange = maxTime - minTime;
 
   // Calculate slider position (0-100)
@@ -75,7 +79,7 @@ export function TimelineSlider({
   };
 
   const formatRelative = (date: Date) => {
-    const diffMs = date.getTime() - now.getTime();
+    const diffMs = date.getTime() - anchor.getTime();
     const diffHours = diffMs / (1000 * 60 * 60);
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
@@ -96,12 +100,14 @@ export function TimelineSlider({
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm text-gray-400">Timeline</div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleReset}
-            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white"
-          >
-            Now
-          </button>
+          {showNow && (
+            <button
+              onClick={handleReset}
+              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white"
+            >
+              Now
+            </button>
+          )}
           <button
             onClick={togglePlay}
             className={`px-3 py-1 text-xs rounded text-white ${
@@ -127,7 +133,7 @@ export function TimelineSlider({
           {formatDate(currentTime)}
         </div>
         <div className="text-gray-400 text-xs">
-          {formatRelative(currentTime)} from now
+          {formatRelative(currentTime)} from anchor
         </div>
       </div>
 
@@ -153,7 +159,7 @@ export function TimelineSlider({
       {/* Range labels */}
       <div className="flex justify-between text-xs text-gray-500 mt-1">
         <span>-{rangeDays}d</span>
-        <span>Now</span>
+        <span>Anchor</span>
         <span>+{rangeDays}d</span>
       </div>
     </div>

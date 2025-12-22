@@ -4,14 +4,17 @@ import { SatelliteSelector } from './components/Controls/SatelliteSelector';
 import { TimelineSlider } from './components/Controls/TimelineSlider';
 import { OrbitalParams } from './components/Panels/OrbitalParams';
 import { ConjunctionPanel } from './components/Panels/ConjunctionPanel';
+import { RelativeViewPanel } from './components/Panels/RelativeViewPanel';
 import { useSatelliteCatalog } from './hooks/useSatelliteCatalog';
 import { useTLE } from './hooks/useTLE';
 import { addManualTLEs } from './lib/celestrak';
 import { useSatellitePosition } from './hooks/useSatellitePosition';
 import { useConjunctions } from './hooks/useConjunctions';
 import type { SatelliteCatalogEntry, SatelliteTLE } from './types/satellite';
+import { profiles } from './lib/profiles';
 
 type SortMode = 'date' | 'distance';
+const SEARCH_RANGE_DAYS = 3;
 
 function formatCacheAge(timestamp: number): string {
   const ageMs = Date.now() - timestamp;
@@ -35,8 +38,10 @@ export default function App() {
 
   // UI state
   const [panelCollapsed, setPanelCollapsed] = useState(false);
-  const [conjunctionSortMode, setConjunctionSortMode] = useState<SortMode>('date');
+  const [conjunctionSortMode, setConjunctionSortMode] = useState<SortMode>('distance');
   const [showGrid, setShowGrid] = useState(true);
+  const [anchorTime, setAnchorTime] = useState<Date>(new Date());
+  const [selectedProfileName, setSelectedProfileName] = useState<string | null>(null);
 
   // Load satellite catalog
   const {
@@ -109,7 +114,18 @@ export default function App() {
     currentDistance,
     currentRelativeVelocity,
     loading: conjunctionsLoading,
-  } = useConjunctions(tleA, tleB, allTlesA, allTlesB, currentTime);
+  } = useConjunctions(tleA, tleB, allTlesA, allTlesB, currentTime, SEARCH_RANGE_DAYS, anchorTime);
+
+  // Auto-jump to the approach closest to the anchor when conjunctions refresh
+  useEffect(() => {
+    if (conjunctions.length === 0) return;
+    const target = conjunctions.reduce((closest, current) => {
+      const cdiff = Math.abs(current.time.getTime() - anchorTime.getTime());
+      const bdiff = Math.abs(closest.time.getTime() - anchorTime.getTime());
+      return cdiff < bdiff ? current : closest;
+    }, conjunctions[0]!);
+    setCurrentTime(target.time);
+  }, [conjunctions, anchorTime]);
 
   // Handlers
   const handleSelectA = useCallback((entry: SatelliteCatalogEntry | null) => {
@@ -131,9 +147,12 @@ export default function App() {
   }, []);
 
   const handleNow = useCallback(() => {
-    setAutoNow(true);
-    setCurrentTime(new Date());
-  }, []);
+    if (selectedProfileName) return;
+    const now = new Date();
+    setAnchorTime(now);
+    setCurrentTime(now);
+    setAutoNow(false);
+  }, [selectedProfileName]);
 
   const handlePasteTlesA = useCallback(async (text: string, opts?: { forceNorad?: boolean }): Promise<number> => {
     if (selectedIdA === null) return 0;
@@ -148,6 +167,28 @@ export default function App() {
     refreshTleB({ clearCache: false });
     return added;
   }, [refreshTleB, selectedIdB]);
+
+  const handleSelectProfile = useCallback((name: string) => {
+    const profile = profiles.find(p => p.name === name);
+    setSelectedProfileName(name);
+    if (!profile) {
+      const now = new Date();
+      setAnchorTime(now);
+      setCurrentTime(now);
+      setAutoNow(false);
+      setSelectedIdA(null);
+      setSelectedIdB(null);
+      return;
+    }
+    const refTime = new Date(profile.now);
+    setAnchorTime(refTime);
+    setCurrentTime(refTime);
+    setAutoNow(false);
+    setSelectedIdA(profile.satA);
+    setSelectedIdB(profile.satB);
+    setPreferredEpochA(null);
+    setPreferredEpochB(null);
+  }, [setSelectedIdA, setSelectedIdB]);
 
   // Keep time synced to real clock when in auto-now mode
   useEffect(() => {
@@ -180,6 +221,31 @@ export default function App() {
         <p className="text-gray-400 text-sm mb-2">
           Satellite Orbit Visualization & Conjunction Finder
         </p>
+
+        {/* Profiles */}
+        <div className="mb-4 space-y-2">
+          <div className="flex items-center justify-between text-sm text-gray-300">
+            <span>Profiles</span>
+            <span className="text-gray-500 text-xs">sets satellites + now</span>
+          </div>
+          <select
+            value={selectedProfileName ?? ''}
+            onChange={(e) => handleSelectProfile(e.target.value)}
+            className="w-full bg-gray-900 text-white rounded px-2 py-1 border border-gray-700"
+          >
+            <option value="">-- None --</option>
+            {profiles.map(p => (
+              <option key={p.name} value={p.name}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          {selectedProfileName && (
+            <div className="text-xs text-gray-500">
+              Anchor: {anchorTime.toISOString().replace('T', ' ').slice(0, 19)} UTC
+            </div>
+          )}
+        </div>
 
         {/* Catalog cache info */}
         <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
@@ -248,7 +314,9 @@ export default function App() {
             currentTime={currentTime}
             onTimeChange={handleTimeChange}
             onNow={handleNow}
-            rangeDays={10}
+            rangeDays={SEARCH_RANGE_DAYS}
+            anchorTime={anchorTime}
+            showNow={!selectedProfileName}
           />
         </div>
 
@@ -284,7 +352,7 @@ export default function App() {
       </div>
 
       {/* Main 3D view */}
-      <div className="flex-1">
+      <div className="flex-1 relative">
         <Scene
           satelliteA={
             activeTleA
@@ -307,6 +375,14 @@ export default function App() {
           currentTime={currentTime}
           showGrid={showGrid}
         />
+
+        <div className="absolute top-4 right-4 z-40 w-96 max-w-[420px]">
+          <RelativeViewPanel
+            positionA={positionA}
+            positionB={positionB}
+            currentTime={currentTime}
+          />
+        </div>
 
         {/* Grid toggle button */}
         <button

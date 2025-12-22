@@ -1,6 +1,7 @@
 import * as satellite from 'satellite.js';
 import type { Conjunction, SatelliteTLE } from '../types/satellite';
 import { createSatrec, calculatePosition, calculateDistance, calculateRelativeVelocity } from './orbit';
+import { classifyEarthRelation, computePhaseAngle, computeSunForTime } from './relativeView';
 
 interface ConjunctionSearchResult {
   time: Date;
@@ -49,8 +50,8 @@ export function findConjunctions(params: {
 }): Conjunction[] {
   const { tlesA, tlesB, startTime, endTime, options = {} } = params;
   const {
-    coarseStepSeconds = 60,  // 1 minute coarse search
-    maxResults = 20,
+    coarseStepSeconds = 30,  // finer coarse search to avoid missing tight passes
+    maxResults,
   } = options;
 
   const cachedA = buildSatrecCache(tlesA);
@@ -78,11 +79,17 @@ export function findConjunctions(params: {
 
     if (posA && posB) {
       const relVel = calculateRelativeVelocity(posA.velocity, posB.velocity);
+      const sunEci = computeSunForTime(minimum.time);
+      const phaseAngleDeg = computePhaseAngle(posA.eci, posB.eci, sunEci);
+      const { relation, missDistance } = classifyEarthRelation(posA.eci, posB.eci);
 
       conjunctions.push({
         time: minimum.time,
         distance: minimum.distance,
         relativeVelocity: relVel,
+        phaseAngleDeg,
+        earthRelation: relation,
+        earthMissDistanceKm: missDistance,
         satelliteA: {
           position: posA,
           name: activeA.tle.name,
@@ -95,9 +102,12 @@ export function findConjunctions(params: {
     }
   }
 
-  // Sort by distance (closest first)
-  const sorted = conjunctions.sort((a, b) => a.distance - b.distance);
-  return sorted.slice(0, maxResults);
+  // Sort chronologically; panel handles distance/date sorting for display
+  conjunctions.sort((a, b) => a.distance - b.distance);
+  if (typeof maxResults === 'number') {
+    return conjunctions.slice(0, maxResults);
+  }
+  return conjunctions;
 }
 
 // Find all local minima in the distance function
@@ -153,7 +163,7 @@ function findAllLocalMinima(
     time = new Date(time.getTime() + stepMs);
   }
 
-  return minima;
+  return mergeNearbyMinima(minima, stepSeconds);
 }
 
 // Refine minimum using ternary search
@@ -190,6 +200,29 @@ function refineMinimum(
     time: finalTime,
     distance: finalDistance,
   };
+}
+
+function mergeNearbyMinima(minima: ConjunctionSearchResult[], thresholdSeconds: number): ConjunctionSearchResult[] {
+  if (minima.length === 0) return minima;
+  const sorted = minima.slice().sort((a, b) => a.time.getTime() - b.time.getTime());
+  const merged: ConjunctionSearchResult[] = [];
+
+  let current = sorted[0]!;
+  for (let i = 1; i < sorted.length; i++) {
+    const next = sorted[i]!;
+    const dt = (next.time.getTime() - current.time.getTime()) / 1000;
+    if (dt <= thresholdSeconds) {
+      // Keep the tighter pass within this window
+      if (next.distance < current.distance) {
+        current = next;
+      }
+    } else {
+      merged.push(current);
+      current = next;
+    }
+  }
+  merged.push(current);
+  return merged;
 }
 
 function getDistanceAtTime(

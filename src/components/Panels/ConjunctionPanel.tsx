@@ -142,6 +142,14 @@ function ConjunctionItem({ conjunction, onJump, isCurrent }: ConjunctionItemProp
           <div className="text-gray-400 text-xs">
             {conjunction.relativeVelocity.toFixed(2)} km/s rel. vel.
           </div>
+          <div className="text-gray-400 text-xs">
+            Phase {conjunction.phaseAngleDeg?.toFixed(1) ?? '–'}° • Earth{' '}
+            {conjunction.earthRelation === 'obstructed'
+              ? 'obstructs'
+              : conjunction.earthRelation === 'background'
+                ? 'background'
+                : 'clear'}
+          </div>
         </div>
         <div className="text-right">
           <div className="text-gray-300 text-xs">

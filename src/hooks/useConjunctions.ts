@@ -16,7 +16,8 @@ export function useConjunctions(
   allTlesA: SatelliteTLE[],
   allTlesB: SatelliteTLE[],
   currentTime: Date,
-  timeRangeDays: number = 10
+  timeRangeDays: number = 10,
+  searchCenter?: Date
 ): UseConjunctionsResult {
   const [conjunctions, setConjunctions] = useState<Conjunction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +49,7 @@ export function useConjunctions(
 
     // Anchor search to the simulated time at the moment satellites/TLEs change.
     // We intentionally do not rerun this search on every playback tick to avoid flicker.
-    const searchCenter = currentTime;
+    const searchCenterTime = searchCenter ?? currentTime;
 
     // Capture stable references for the async function
     const tleSnapshotA = tlesA.slice();
@@ -62,8 +63,8 @@ export function useConjunctions(
         setError(null);
 
         // Use current simulation time as center of search range
-        const startTime = new Date(searchCenter.getTime() - timeRangeDays * 24 * 60 * 60 * 1000);
-        const endTime = new Date(searchCenter.getTime() + timeRangeDays * 24 * 60 * 60 * 1000);
+        const startTime = new Date(searchCenterTime.getTime() - timeRangeDays * 24 * 60 * 60 * 1000);
+        const endTime = new Date(searchCenterTime.getTime() + timeRangeDays * 24 * 60 * 60 * 1000);
 
         // Run in a microtask to not block the main thread
         const results = await new Promise<Conjunction[]>((resolve) => {
@@ -75,8 +76,7 @@ export function useConjunctions(
                 startTime,
                 endTime,
                 options: {
-                  coarseStepSeconds: 60,
-                  maxResults: 20,
+                  coarseStepSeconds: 30,
                 },
               });
               resolve(conjs);
@@ -110,7 +110,8 @@ export function useConjunctions(
   }, [
     allTlesA.map(t => t.epoch.getTime()).join(','),
     allTlesB.map(t => t.epoch.getTime()).join(','),
-    timeRangeDays
+    timeRangeDays,
+    searchCenter ? searchCenter.getTime() : currentTime.getTime()
   ]);
 
   return {

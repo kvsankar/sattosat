@@ -78,6 +78,9 @@ export interface Conjunction {
   time: Date;
   distance: number;         // km
   relativeVelocity: number; // km/s
+  phaseAngleDeg?: number;   // Sun-B-A phase angle
+  earthRelation?: 'obstructed' | 'background' | 'clear';
+  earthMissDistanceKm?: number;
   satelliteA: {
     position: SatellitePosition;
     name: string;
