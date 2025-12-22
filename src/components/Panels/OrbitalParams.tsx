@@ -1,0 +1,141 @@
+import type { SatelliteTLE, SatellitePosition } from '../../types/satellite';
+
+interface OrbitalParamsProps {
+  tleA: SatelliteTLE | null;
+  tleB: SatelliteTLE | null;
+  positionA: SatellitePosition | null;
+  positionB: SatellitePosition | null;
+  currentDistance: number | null;
+  relativeVelocity: number | null;
+}
+
+export function OrbitalParams({
+  tleA,
+  tleB,
+  positionA,
+  positionB,
+  currentDistance,
+  relativeVelocity,
+}: OrbitalParamsProps) {
+  if (!tleA && !tleB) {
+    return (
+      <div className="bg-gray-800 p-4 rounded-lg text-gray-400 text-sm">
+        Select satellites to view orbital parameters
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-800 p-4 rounded-lg">
+      <h3 className="text-white font-medium mb-3">Orbital Parameters</h3>
+
+      {/* Current Distance */}
+      {currentDistance !== null && (
+        <div className="mb-4 p-3 bg-gray-900 rounded-lg">
+          <div className="text-gray-400 text-xs uppercase mb-1">
+            Current Distance
+          </div>
+          <div className="text-2xl font-mono text-white">
+            {currentDistance.toFixed(1)} km
+          </div>
+          {relativeVelocity !== null && (
+            <div className="text-sm text-gray-400">
+              Relative velocity: {relativeVelocity.toFixed(2)} km/s
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Side by side comparison */}
+      <div className="grid grid-cols-2 gap-4">
+        <ParamColumn tle={tleA} position={positionA} label="Satellite A" color="#3b82f6" />
+        <ParamColumn tle={tleB} position={positionB} label="Satellite B" color="#ef4444" />
+      </div>
+    </div>
+  );
+}
+
+interface ParamColumnProps {
+  tle: SatelliteTLE | null;
+  position: SatellitePosition | null;
+  label: string;
+  color: string;
+}
+
+function formatLatLon(lat: number, lon: number): { lat: string; lon: string } {
+  const latDir = lat >= 0 ? 'N' : 'S';
+  const lonDir = lon >= 0 ? 'E' : 'W';
+  return {
+    lat: `${Math.abs(lat).toFixed(2)}° ${latDir}`,
+    lon: `${Math.abs(lon).toFixed(2)}° ${lonDir}`,
+  };
+}
+
+function ParamColumn({ tle, position, label, color }: ParamColumnProps) {
+  if (!tle) {
+    return (
+      <div className="text-gray-500 text-sm">
+        <div className="font-medium mb-2" style={{ color }}>
+          {label}
+        </div>
+        <div>Not selected</div>
+      </div>
+    );
+  }
+
+  const latLon = position ? formatLatLon(position.geodetic.latitude, position.geodetic.longitude) : null;
+
+  return (
+    <div>
+      <div className="font-medium mb-2 truncate" style={{ color }} title={tle.name}>
+        {tle.name}
+      </div>
+
+      <div className="space-y-1 text-xs">
+        <ParamRow label="NORAD ID" value={tle.noradId.toString()} />
+
+        {/* Current position */}
+        {latLon && (
+          <>
+            <div className="border-t border-gray-700 my-2 pt-2">
+              <span className="text-gray-500 text-[10px] uppercase">Current Position</span>
+            </div>
+            <ParamRow label="Latitude" value={latLon.lat} />
+            <ParamRow label="Longitude" value={latLon.lon} />
+            <ParamRow label="Altitude" value={`${position!.geodetic.altitude.toFixed(1)} km`} />
+          </>
+        )}
+
+        {/* Orbital elements */}
+        <div className="border-t border-gray-700 my-2 pt-2">
+          <span className="text-gray-500 text-[10px] uppercase">Orbital Elements</span>
+        </div>
+        <ParamRow label="Inclination" value={`${tle.inclination.toFixed(2)}°`} />
+        <ParamRow label="Eccentricity" value={tle.eccentricity.toFixed(6)} />
+        <ParamRow label="RAAN" value={`${tle.raan.toFixed(2)}°`} />
+        <ParamRow label="Arg Perigee" value={`${tle.argOfPerigee.toFixed(2)}°`} />
+        <ParamRow label="Mean Anomaly" value={`${tle.meanAnomaly.toFixed(2)}°`} />
+        <ParamRow label="Apogee" value={`${tle.apogee.toFixed(1)} km`} />
+        <ParamRow label="Perigee" value={`${tle.perigee.toFixed(1)} km`} />
+        <ParamRow label="Period" value={`${tle.period.toFixed(1)} min`} />
+        <ParamRow
+          label="TLE Epoch"
+          value={formatEpoch(tle.epoch)}
+        />
+      </div>
+    </div>
+  );
+}
+
+function formatEpoch(date: Date): string {
+  return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+}
+
+function ParamRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-gray-400">{label}</span>
+      <span className="text-white font-mono">{value}</span>
+    </div>
+  );
+}
