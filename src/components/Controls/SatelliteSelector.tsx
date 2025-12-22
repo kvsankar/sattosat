@@ -145,7 +145,7 @@ export function SatelliteSelector({
               .sort((a, b) => b.epoch.getTime() - a.epoch.getTime())
               .map((t, idx) => (
                 <option key={idx} value={t.epoch.toISOString()}>
-                  {formatFriendlyEpoch(t.epoch)} ({formatCacheAge(t.cacheTimestamp)})
+                  {formatFriendlyEpoch(t.epoch).replace(' ', '\n')} ({formatCacheAge(t.cacheTimestamp)})
                 </option>
               ))}
           </select>

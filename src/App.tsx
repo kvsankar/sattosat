@@ -78,30 +78,35 @@ export default function App() {
   } = useTLE(selectedIdB, currentTime);
 
   const pickActiveTle = useCallback(
-    (allTles: SatelliteTLE[], preferredEpoch: string | null, fallback: SatelliteTLE | null) => {
+    (
+      allTles: SatelliteTLE[],
+      preferredEpoch: string | null,
+      fallback: SatelliteTLE | null,
+      referenceTime: Date
+    ) => {
       if (allTles.length === 0) return fallback;
       if (preferredEpoch) {
         const exact = allTles.find(t => t.epoch.toISOString() === preferredEpoch);
         if (exact) return exact;
       }
-      const targetMs = currentTime.getTime();
+      const targetMs = referenceTime.getTime();
       return allTles.reduce((closest, current) => {
         const currentDiff = Math.abs(current.epoch.getTime() - targetMs);
         const closestDiff = Math.abs(closest.epoch.getTime() - targetMs);
         return currentDiff < closestDiff ? current : closest;
       }, allTles[0]!);
     },
-    [currentTime]
+    []
   );
 
   const activeTleA = useMemo(
-    () => pickActiveTle(allTlesA, preferredEpochA, tleA),
-    [allTlesA, preferredEpochA, pickActiveTle, tleA]
+    () => pickActiveTle(allTlesA, preferredEpochA, tleA, anchorTime),
+    [allTlesA, preferredEpochA, pickActiveTle, tleA, anchorTime]
   );
 
   const activeTleB = useMemo(
-    () => pickActiveTle(allTlesB, preferredEpochB, tleB),
-    [allTlesB, preferredEpochB, pickActiveTle, tleB]
+    () => pickActiveTle(allTlesB, preferredEpochB, tleB, anchorTime),
+    [allTlesB, preferredEpochB, pickActiveTle, tleB, anchorTime]
   );
 
   // Calculate positions and orbit paths
@@ -213,8 +218,8 @@ export default function App() {
 
       {/* Left sidebar */}
       <div
-        className={`w-96 flex-shrink-0 p-4 overflow-y-auto border-r border-gray-700 transition-all duration-300 ${
-          panelCollapsed ? '-ml-96' : 'ml-0'
+        className={`w-[27rem] flex-shrink-0 p-4 overflow-y-auto border-r border-gray-700 transition-all duration-300 ${
+          panelCollapsed ? '-ml-[27rem]' : 'ml-0'
         }`}
       >
         <h1 className="text-xl font-bold text-white mb-1">SatOrbitViz</h1>
