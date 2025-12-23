@@ -133,8 +133,8 @@ export function SatelliteSelector({
               const val = e.target.value === 'auto' ? null : e.target.value;
               onSelectTleEpoch(val);
             }}
-            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs whitespace-pre-line"
-            style={{ whiteSpace: 'pre-line' }}
+            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+            style={{ whiteSpace: 'pre' }}
           >
             <option value="auto">Auto (nearest to timeline)</option>
             {availableTles
@@ -148,10 +148,9 @@ export function SatelliteSelector({
                   <option
                     key={idx}
                     value={t.epoch.toISOString()}
-                    className="whitespace-pre-line"
-                    style={{ whiteSpace: 'pre-line' }}
+                    style={{ whiteSpace: 'pre' }}
                   >
-                    {`${date}\n${time}`} ({formatCacheAge(t.cacheTimestamp)})
+                    {`${date}\u000A${time}`} ({formatCacheAge(t.cacheTimestamp)})
                   </option>
                 );
               })}
