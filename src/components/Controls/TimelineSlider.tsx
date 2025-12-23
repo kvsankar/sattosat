@@ -27,6 +27,8 @@ export function TimelineSlider({
   const anchor = anchorTime ?? new Date();
   const minTime = anchor.getTime() - rangeDays * 24 * 60 * 60 * 1000;
   const maxTime = anchor.getTime() + rangeDays * 24 * 60 * 60 * 1000;
+  const nowMs = Date.now();
+  const nowDisabled = nowMs < minTime || nowMs > maxTime;
   const totalRange = maxTime - minTime;
 
   // Calculate slider position (0-100)
@@ -118,9 +120,9 @@ export function TimelineSlider({
           {showNow && (
             <button
               onClick={handleReset}
-              disabled={currentTime.getTime() < minTime || currentTime.getTime() > maxTime}
+              disabled={nowDisabled}
               className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white disabled:opacity-50"
-              title={currentTime.getTime() < minTime || currentTime.getTime() > maxTime ? 'Now is outside range' : 'Jump to now'}
+              title={nowDisabled ? 'Now is outside range' : 'Jump to now'}
             >
               Now
             </button>
