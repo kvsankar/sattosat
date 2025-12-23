@@ -8,6 +8,7 @@ interface TimelineSliderProps {
   rangeDays?: number;
   anchorTime?: Date;
   showNow?: boolean;
+  disabled?: boolean;
 }
 
 const SPEEDS = [1, 10, 100, 1000];
@@ -20,6 +21,7 @@ export function TimelineSlider({
   rangeDays = 5,
   anchorTime,
   showNow = true,
+  disabled = false,
 }: TimelineSliderProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedIndex, setSpeedIndex] = useState(1); // Default 10x
@@ -36,53 +38,60 @@ export function TimelineSlider({
 
   const handleSliderChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (disabled) return;
       setIsPlaying(false);
       const percent = parseFloat(e.target.value);
       const newTime = new Date(minTime + (percent / 100) * totalRange);
       onTimeChange(newTime);
     },
-    [minTime, totalRange, onTimeChange]
+    [disabled, minTime, totalRange, onTimeChange]
   );
 
   const handleReset = useCallback(() => {
+    if (disabled) return;
     setIsPlaying(false);
     if (onNow) {
       onNow();
     } else {
       onTimeChange(new Date());
     }
-  }, [onNow, onTimeChange]);
+  }, [disabled, onNow, onTimeChange]);
 
   const handleStep = useCallback((minutes: number) => {
+    if (disabled) return;
     setIsPlaying(false);
     const next = new Date(currentTime.getTime() + minutes * 60 * 1000);
     onTimeChange(next);
-  }, [currentTime, onTimeChange]);
+  }, [currentTime, disabled, onTimeChange]);
 
   const handleStepSeconds = useCallback((seconds: number) => {
+    if (disabled) return;
     setIsPlaying(false);
     const next = new Date(currentTime.getTime() + seconds * 1000);
     onTimeChange(next);
-  }, [currentTime, onTimeChange]);
+  }, [currentTime, disabled, onTimeChange]);
 
   const handleAnchorClick = useCallback(() => {
+    if (disabled) return;
     setIsPlaying(false);
     if (onAnchor) {
       onAnchor();
     }
-  }, [onAnchor]);
+  }, [disabled, onAnchor]);
 
   const togglePlay = useCallback(() => {
+    if (disabled) return;
     setIsPlaying((p) => !p);
-  }, []);
+  }, [disabled]);
 
   const cycleSpeed = useCallback(() => {
+    if (disabled) return;
     setSpeedIndex((i) => (i + 1) % SPEEDS.length);
-  }, []);
+  }, [disabled]);
 
   // Animation loop
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || disabled) return;
 
     const speed = SPEEDS[speedIndex] ?? 10;
     const intervalMs = 100; // Update every 100ms
@@ -136,7 +145,8 @@ export function TimelineSlider({
           {onAnchor && (
             <button
               onClick={handleAnchorClick}
-              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white"
+              disabled={disabled}
+              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white disabled:opacity-50"
             >
               Anchor
             </button>
@@ -144,7 +154,7 @@ export function TimelineSlider({
           {showNow && (
             <button
               onClick={handleReset}
-              disabled={nowDisabled}
+              disabled={nowDisabled || disabled}
               className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white disabled:opacity-50"
               title={nowDisabled ? 'Now is outside range' : 'Jump to now'}
             >
@@ -153,17 +163,19 @@ export function TimelineSlider({
           )}
           <button
             onClick={togglePlay}
+            disabled={disabled}
             className={`px-3 py-1 text-xs rounded text-white ${
               isPlaying
                 ? 'bg-red-600 hover:bg-red-700'
                 : 'bg-green-600 hover:bg-green-700'
-            }`}
+            } disabled:opacity-50`}
           >
             {isPlaying ? 'Pause' : 'Play'}
           </button>
           <button
             onClick={cycleSpeed}
-            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white min-w-[50px]"
+            disabled={disabled}
+            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white min-w-[50px] disabled:opacity-50"
           >
             {SPEEDS[speedIndex]}x
           </button>
@@ -188,6 +200,7 @@ export function TimelineSlider({
           max="100"
           step="0.01"
           value={sliderValue}
+          disabled={disabled}
           onChange={handleSliderChange}
           className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
         />
@@ -210,37 +223,43 @@ export function TimelineSlider({
       <div className="flex gap-2 mt-3 text-xs">
         <button
           onClick={() => handleStep(-5)}
-          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+          disabled={disabled}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded disabled:opacity-50"
         >
           -5m
         </button>
         <button
           onClick={() => handleStep(-1)}
-          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+          disabled={disabled}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded disabled:opacity-50"
         >
           -1m
         </button>
         <button
           onClick={() => handleStepSeconds(-10)}
-          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+          disabled={disabled}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded disabled:opacity-50"
         >
           -10s
         </button>
         <button
           onClick={() => handleStepSeconds(10)}
-          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+          disabled={disabled}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded disabled:opacity-50"
         >
           +10s
         </button>
         <button
           onClick={() => handleStep(1)}
-          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+          disabled={disabled}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded disabled:opacity-50"
         >
           +1m
         </button>
         <button
           onClick={() => handleStep(5)}
-          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+          disabled={disabled}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded disabled:opacity-50"
         >
           +5m
         </button>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Scene } from './components/Globe/Scene';
 import { SatelliteSelector } from './components/Controls/SatelliteSelector';
 import { TimelineSlider } from './components/Controls/TimelineSlider';
@@ -55,6 +55,7 @@ export default function App() {
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [relativeCollapsed, setRelativeCollapsed] = useState(false);
   const [viewToggleCollapsed, setViewToggleCollapsed] = useState(false);
+  const hasAutoLoadedProfile = useRef(false);
 
   // Load satellite catalog
   const {
@@ -125,6 +126,8 @@ export default function App() {
   // Calculate positions and orbit paths
   const { position: positionA, orbitPath: orbitPathA } = useSatellitePosition(activeTleA, currentTime);
   const { position: positionB, orbitPath: orbitPathB } = useSatellitePosition(activeTleB, currentTime);
+  const profileActive = !!selectedProfileName;
+  const selectionReady = profileActive && !!activeTleA && !!activeTleB && !!positionA && !!positionB;
 
   // Find conjunctions
   const {
@@ -135,6 +138,7 @@ export default function App() {
   } = useConjunctions(tleA, tleB, allTlesA, allTlesB, currentTime, SEARCH_RANGE_DAYS, anchorTime);
 
   const distanceSamples = useMemo(() => {
+    if (!selectedProfileName) return [];
     const tlesAForCurve = allTlesA.length ? allTlesA : (tleA ? [tleA] : []);
     const tlesBForCurve = allTlesB.length ? allTlesB : (tleB ? [tleB] : []);
     if (tlesAForCurve.length === 0 || tlesBForCurve.length === 0) return [];
@@ -214,7 +218,8 @@ export default function App() {
 
   const handleSelectProfile = useCallback((name: string) => {
     const profile = profiles.find(p => p.name === name);
-    setSelectedProfileName(name);
+    const newName = profile ? profile.name : null;
+    setSelectedProfileName(newName);
     if (!profile) {
       const now = new Date();
       setAnchorTime(now);
@@ -222,6 +227,8 @@ export default function App() {
       setAutoNow(false);
       setSelectedIdA(null);
       setSelectedIdB(null);
+      setPreferredEpochA(null);
+      setPreferredEpochB(null);
       return;
     }
     // Seed embedded/pasted TLEs from profile
@@ -240,10 +247,12 @@ export default function App() {
 
   // Auto-load the first profile on startup if available
   useEffect(() => {
-    if (!selectedProfileName && profiles.length > 0) {
+    if (hasAutoLoadedProfile.current) return;
+    if (profiles.length > 0) {
       handleSelectProfile(profiles[0]!.name);
+      hasAutoLoadedProfile.current = true;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profiles.length]);
 
   // Keep time synced to real clock when in auto-now mode
@@ -336,7 +345,7 @@ export default function App() {
             selectedId={selectedIdA}
             onSelect={handleSelectA}
             loading={catalogLoading || loadingA}
-            disabled={catalogLoading}
+            disabled={catalogLoading || !profileActive}
             cacheInfo={cacheInfoA}
             onRefresh={refreshTleA}
             availableTles={availableTlesA}
@@ -353,7 +362,7 @@ export default function App() {
             selectedId={selectedIdB}
             onSelect={handleSelectB}
             loading={catalogLoading || loadingB}
-            disabled={catalogLoading}
+            disabled={catalogLoading || !profileActive}
             cacheInfo={cacheInfoB}
             onRefresh={refreshTleB}
             availableTles={availableTlesB}
@@ -374,6 +383,7 @@ export default function App() {
             rangeDays={SEARCH_RANGE_DAYS}
             anchorTime={anchorTime}
             showNow={true}
+            disabled={!selectionReady}
           />
         </div>
 
@@ -420,32 +430,38 @@ export default function App() {
             bottom: (!timelineCollapsed || !viewToggleCollapsed) ? TIMELINE_HEIGHT + 24 : 0
           }}
         >
-          <Scene
-            satelliteA={
-              activeTleA
-                ? {
-                    name: activeTleA.name,
-                    position: positionA,
-                    orbitPath: orbitPathA,
-                  }
-                : null
-            }
-            satelliteB={
-              activeTleB
-                ? {
-                    name: activeTleB.name,
-                    position: positionB,
-                    orbitPath: orbitPathB,
-                  }
-                : null
-            }
-            currentTime={currentTime}
-            showGrid={showGrid}
-            showTerminator={showTerminator}
-            showAntiSolar={showAntiSolar}
-            showMainLos={showMainLos}
-            showMainSunLine={showMainSunLine}
-          />
+          {selectionReady ? (
+            <Scene
+              satelliteA={
+                activeTleA
+                  ? {
+                      name: activeTleA.name,
+                      position: positionA,
+                      orbitPath: orbitPathA,
+                    }
+                  : null
+              }
+              satelliteB={
+                activeTleB
+                  ? {
+                      name: activeTleB.name,
+                      position: positionB,
+                      orbitPath: orbitPathB,
+                    }
+                  : null
+              }
+              currentTime={currentTime}
+              showGrid={showGrid}
+              showTerminator={showTerminator}
+              showAntiSolar={showAntiSolar}
+              showMainLos={showMainLos}
+              showMainSunLine={showMainSunLine}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              {profileActive ? 'Select both satellites to start visualization.' : 'Select a profile to start.'}
+            </div>
+          )}
         </div>
 
         {/* Relative view panel (collapsible) */}
@@ -494,16 +510,24 @@ export default function App() {
               Show timeline
             </button>
           ) : (
-            <DistanceTimeline
-              samples={distanceSamples}
-              currentTime={currentTime}
-              anchorTime={anchorTime}
-              rangeDays={SEARCH_RANGE_DAYS}
-              onTimeChange={handleTimeChange}
-              height={TIMELINE_HEIGHT}
-              currentDistanceKm={currentDistance ?? undefined}
-              onCollapse={() => setTimelineCollapsed(true)}
-            />
+            <>
+              {profileActive ? (
+                <DistanceTimeline
+                  samples={distanceSamples}
+                  currentTime={currentTime}
+                  anchorTime={anchorTime}
+                  rangeDays={SEARCH_RANGE_DAYS}
+                  onTimeChange={handleTimeChange}
+                  height={TIMELINE_HEIGHT}
+                  currentDistanceKm={currentDistance ?? undefined}
+                  onCollapse={() => setTimelineCollapsed(true)}
+                />
+              ) : (
+                <div className="bg-gray-900/90 border border-gray-700 rounded-lg p-3 text-gray-400 text-sm h-full flex items-center justify-center">
+                  Select a profile to view the distance timeline.
+                </div>
+              )}
+            </>
           )}
         </div>
 
