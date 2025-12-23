@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect, useState } from 'react';
+import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import type { DistanceSample } from '../../lib/conjunctions';
 
 interface DistanceTimelineProps {
@@ -66,6 +66,10 @@ export function DistanceTimeline({
       start,
       end,
       raw: rawStats,
+      halfSpanX,
+      halfSpanY,
+      centerX,
+      centerY,
     };
   }, [rawStats, zoom.x, zoom.y, zoom.xCenter, zoom.yCenter]);
 
@@ -150,8 +154,62 @@ export function DistanceTimeline({
   }, [rawStats]);
 
   const [hover, setHover] = useState<{ x: number; y: number; time: number; distance: number } | null>(null);
+  const isPanning = useRef(false);
+  const panStart = useRef<{ x: number; y: number; centerX: number; centerY: number } | null>(null);
+
+  const clampCenter = useCallback((nextCenterX: number, nextCenterY: number, base: typeof rawStats, spanX: number, spanY: number) => {
+    const minCenterX = base.start + spanX;
+    const maxCenterX = base.end - spanX;
+    const minCenterY = base.min + spanY;
+    const maxCenterY = base.max - spanY;
+    return {
+      xCenter: Math.min(maxCenterX, Math.max(minCenterX, nextCenterX)),
+      yCenter: Math.min(maxCenterY, Math.max(minCenterY, nextCenterY)),
+    };
+  }, []);
+
+  const handlePanStart = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
+    if (!stats || !rawStats || event.button !== 0) return;
+    isPanning.current = true;
+    panStart.current = {
+      x: event.clientX,
+      y: event.clientY,
+      centerX: stats.centerX,
+      centerY: stats.centerY,
+    };
+  }, [rawStats, stats]);
+
+  const handlePanMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
+    if (!isPanning.current || !panStart.current || !stats || !rawStats) return;
+    const dx = event.clientX - panStart.current.x;
+    const dy = event.clientY - panStart.current.y;
+    const spanX = stats.end - stats.start;
+    const spanY = stats.max - stats.min;
+    const deltaX = (dx / innerW) * spanX;
+    const deltaY = (dy / innerH) * spanY;
+
+    setZoom(prev => {
+      const { xCenter, yCenter } = clampCenter(
+        panStart.current!.centerX - deltaX,
+        panStart.current!.centerY + deltaY,
+        rawStats,
+        stats.halfSpanX,
+        stats.halfSpanY
+      );
+      return { ...prev, xCenter, yCenter };
+    });
+  }, [clampCenter, rawStats, stats, innerW, innerH]);
+
+  const handlePanEnd = useCallback(() => {
+    isPanning.current = false;
+    panStart.current = null;
+  }, []);
 
   const handleMouseMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
+    if (isPanning.current) {
+      handlePanMove(event);
+      return;
+    }
     if (!stats) return;
     const rect = (event.currentTarget as SVGSVGElement).getBoundingClientRect();
     const ratioX = Math.min(
@@ -165,9 +223,12 @@ export function DistanceTimeline({
     const time = stats.start + ratioX * (stats.end - stats.start);
     const distance = stats.max - ratioY * (stats.max - stats.min);
     setHover({ x: event.clientX, y: event.clientY, time, distance });
-  }, [stats, padding.left, padding.right, padding.top, padding.bottom]);
+  }, [handlePanMove, padding.bottom, padding.left, padding.right, padding.top, stats]);
 
-  const handleMouseLeave = useCallback(() => setHover(null), []);
+  const handleMouseLeave = useCallback(() => {
+    setHover(null);
+    handlePanEnd();
+  }, [handlePanEnd]);
 
   if (!stats) {
     return (
@@ -284,6 +345,8 @@ export function DistanceTimeline({
         onWheel={handleWheel}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
+        onMouseDown={handlePanStart}
+        onMouseUp={handlePanEnd}
       >
         <defs>
           <linearGradient id="distFill" x1="0" x2="0" y1="0" y2="1">
