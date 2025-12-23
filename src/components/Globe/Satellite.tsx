@@ -6,7 +6,6 @@ interface SatelliteProps {
   position: SatellitePosition | null;
   color: string;
   name: string;
-  label: string;
   showLabel?: boolean;
 }
 
@@ -14,7 +13,6 @@ export function Satellite({
   position,
   color,
   name,
-  label,
   showLabel = true,
 }: SatelliteProps) {
   if (!position) return null;
@@ -58,7 +56,7 @@ export function Satellite({
               border: `1px solid ${color}`,
             }}
           >
-            {label}: {name}
+            {name}
           </div>
         </Html>
       )}

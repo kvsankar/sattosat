@@ -79,10 +79,7 @@ export function Scene({ satelliteA, satelliteB, currentTime, showGrid, showTermi
         <Earth currentTime={currentTime} showGrid={showGrid} />
 
         {showAntiSolar && (
-          <mesh position={[ -sunPosition[0] / 50, -sunPosition[1] / 50, -sunPosition[2] / 50 ]}>
-            <sphereGeometry args={[0.03, 16, 16]} />
-            <meshStandardMaterial color="#facc15" emissive="#facc15" emissiveIntensity={0.8} />
-          </mesh>
+          <AntiSolarMarker sunDirection={sunPosition} />
         )}
 
         {showTerminator && (
@@ -101,7 +98,6 @@ export function Scene({ satelliteA, satelliteB, currentTime, showGrid, showTermi
               position={satelliteA.position}
               color="#3b82f6"
               name={satelliteA.name}
-              label="A"
             />
           </group>
         )}
@@ -118,7 +114,6 @@ export function Scene({ satelliteA, satelliteB, currentTime, showGrid, showTermi
               position={satelliteB.position}
               color="#ef4444"
               name={satelliteB.name}
-              label="B"
             />
           </group>
         )}
@@ -156,5 +151,44 @@ function TerminatorLine({ sunDirection }: { sunDirection: [number, number, numbe
       dashSize={0.05}
       gapSize={0.02}
     />
+  );
+}
+
+function AntiSolarMarker({ sunDirection }: { sunDirection: [number, number, number] }) {
+  const dir = useMemo(() => {
+    const v = new THREE.Vector3(sunDirection[0], sunDirection[1], sunDirection[2]);
+    if (v.length() === 0) return new THREE.Vector3(1, 0, 0);
+    return v.normalize();
+  }, [sunDirection]);
+  const pos = dir.clone().multiplyScalar(1.02);
+  const rays: [number, number, number][] = [];
+  const rayLen = 0.05;
+  for (let i = 0; i < 8; i++) {
+    const theta = (i / 8) * Math.PI * 2;
+    const offset = new THREE.Vector3(
+      Math.cos(theta) * rayLen,
+      Math.sin(theta) * rayLen,
+      0
+    );
+    rays.push([pos.x + offset.x, pos.y + offset.y, pos.z + offset.z]);
+  }
+  return (
+    <group position={[pos.x, pos.y, pos.z]}>
+      <mesh>
+        <sphereGeometry args={[0.02, 12, 12]} />
+        <meshStandardMaterial color="#facc15" emissive="#facc15" emissiveIntensity={1} />
+      </mesh>
+      {rays.map((p, idx) => (
+        <Line
+          key={idx}
+          points={[
+            [0, 0, 0],
+            p
+          ]}
+          color="#facc15"
+          lineWidth={1}
+        />
+      ))}
+    </group>
   );
 }

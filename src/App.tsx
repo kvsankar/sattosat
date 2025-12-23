@@ -42,6 +42,8 @@ export default function App() {
   const [showGrid, setShowGrid] = useState(true);
   const [anchorTime, setAnchorTime] = useState<Date>(new Date());
   const [selectedProfileName, setSelectedProfileName] = useState<string | null>(null);
+  const [showTerminator, setShowTerminator] = useState(true);
+  const [showAntiSolar, setShowAntiSolar] = useState(true);
 
   // Load satellite catalog
   const {
@@ -391,6 +393,8 @@ export default function App() {
           }
           currentTime={currentTime}
           showGrid={showGrid}
+          showTerminator={showTerminator}
+          showAntiSolar={showAntiSolar}
         />
 
         <div className="absolute top-4 right-4 z-40 w-96 max-w-[420px]">
@@ -398,17 +402,27 @@ export default function App() {
             positionA={positionA}
             positionB={positionB}
             currentTime={currentTime}
+            orbitPathB={orbitPathB}
           />
         </div>
 
         {/* Grid toggle button */}
-        <button
-          onClick={() => setShowGrid(!showGrid)}
-          className="absolute bottom-4 right-4 z-50 bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-md shadow-lg text-sm"
-          title={showGrid ? 'Hide lat/lon grid' : 'Show lat/lon grid'}
-        >
-          {showGrid ? 'Grid: ON' : 'Grid: OFF'}
-        </button>
+        {/* Bottom-right view controls (main view) */}
+        <div className="absolute bottom-4 right-4 z-50 bg-gray-900/95 border border-gray-700 rounded-lg p-3 text-sm text-gray-200 shadow-lg w-56 space-y-2">
+          <div className="text-white font-semibold">View toggles</div>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} />
+            Show grid
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={showTerminator} onChange={e => setShowTerminator(e.target.checked)} />
+            Show terminator
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={showAntiSolar} onChange={e => setShowAntiSolar(e.target.checked)} />
+            Show anti-solar point
+          </label>
+        </div>
       </div>
     </div>
   );

@@ -153,31 +153,36 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
                 <div className="absolute bottom-1 right-2 text-[11px] text-gray-200 bg-black/60 px-2 py-0.5 rounded">
                   FoV {(computedFov * 60).toFixed(2)}′ / {formatSpan(displaySpanM)}
                 </div>
-                <div className="absolute top-2 right-2 text-[11px] text-gray-200 bg-black/60 px-2 py-1 rounded flex flex-col gap-1">
-                  <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={!lockView} onChange={e => setLockView(!e.target.checked)} />
-                    Unlock view
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={showLos} onChange={e => setShowLos(e.target.checked)} />
-                    LoS
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={showSunLine} onChange={e => setShowSunLine(e.target.checked)} />
-                    Sun line
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={showTrack} onChange={e => setShowTrack(e.target.checked)} />
-                    Orbit track
-                  </label>
-                  <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={showVelocity} onChange={e => setShowVelocity(e.target.checked)} />
-                    Velocity
-                  </label>
-                </div>
               </div>
             );
           })()}
+          <div className="bg-gray-800/70 border border-gray-700 rounded p-2 text-xs text-gray-200 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-300">Camera</span>
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={!lockView} onChange={e => setLockView(!e.target.checked)} />
+                Unlock
+              </label>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={showLos} onChange={e => setShowLos(e.target.checked)} />
+                LoS
+              </label>
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={showSunLine} onChange={e => setShowSunLine(e.target.checked)} />
+                Sun line
+              </label>
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={showTrack} onChange={e => setShowTrack(e.target.checked)} />
+                Orbit track
+              </label>
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={showVelocity} onChange={e => setShowVelocity(e.target.checked)} />
+                Velocity
+              </label>
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-gray-900/70 p-2 rounded">
               <div className="text-gray-400">Range</div>
