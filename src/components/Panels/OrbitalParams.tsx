@@ -120,22 +120,30 @@ function ParamColumn({ tle, position, label, color }: ParamColumnProps) {
         <ParamRow label="Period" value={`${tle.period.toFixed(1)} min`} />
         <ParamRow
           label="TLE Epoch"
-          value={formatEpoch(tle.epoch)}
+          value={formatEpochNode(tle.epoch)}
         />
       </div>
     </div>
   );
 }
 
-function formatEpoch(date: Date): string {
-  return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+function formatEpochNode(date: Date): JSX.Element {
+  const iso = date.toISOString();
+  const datePart = iso.slice(0, 10);
+  const timePart = iso.slice(11, 19) + ' UTC';
+  return (
+    <span className="flex flex-col items-end leading-tight">
+      <span>{datePart}</span>
+      <span>{timePart}</span>
+    </span>
+  );
 }
 
-function ParamRow({ label, value }: { label: string; value: string }) {
+function ParamRow({ label, value }: { label: string; value: string | JSX.Element }) {
   return (
     <div className="flex justify-between">
       <span className="text-gray-400">{label}</span>
-      <span className="text-white font-mono">{value}</span>
+      <span className="text-white font-mono text-right">{value}</span>
     </div>
   );
 }
