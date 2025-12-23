@@ -161,16 +161,34 @@ function AntiSolarMarker({ sunDirection }: { sunDirection: [number, number, numb
     return v.normalize();
   }, [sunDirection]);
   const pos = dir.clone().multiplyScalar(1.02);
+  const rays: [number, number, number][] = [];
+  const rayLen = 0.05;
+  for (let i = 0; i < 8; i++) {
+    const theta = (i / 8) * Math.PI * 2;
+    const offset = new THREE.Vector3(
+      Math.cos(theta) * rayLen,
+      Math.sin(theta) * rayLen,
+      0
+    );
+    rays.push([pos.x + offset.x, pos.y + offset.y, pos.z + offset.z]);
+  }
   return (
     <group position={[pos.x, pos.y, pos.z]}>
       <mesh>
-        <sphereGeometry args={[0.025, 12, 12]} />
+        <sphereGeometry args={[0.02, 12, 12]} />
         <meshStandardMaterial color="#facc15" emissive="#facc15" emissiveIntensity={1} />
       </mesh>
-      <mesh>
-        <circleGeometry args={[0.04, 16]} />
-        <meshBasicMaterial color="#facc15" transparent opacity={0.4} />
-      </mesh>
+      {rays.map((p, idx) => (
+        <Line
+          key={idx}
+          points={[
+            [0, 0, 0],
+            p
+          ]}
+          color="#facc15"
+          lineWidth={1}
+        />
+      ))}
     </group>
   );
 }
