@@ -4,6 +4,7 @@ interface TimelineSliderProps {
   currentTime: Date;
   onTimeChange: (time: Date) => void;
   onNow?: () => void;
+  onAnchor?: () => void;
   rangeDays?: number;
   anchorTime?: Date;
   showNow?: boolean;
@@ -15,6 +16,7 @@ export function TimelineSlider({
   currentTime,
   onTimeChange,
   onNow,
+  onAnchor,
   rangeDays = 5,
   anchorTime,
   showNow = true,
@@ -46,6 +48,11 @@ export function TimelineSlider({
       onTimeChange(new Date());
     }
   }, [onNow, onTimeChange]);
+
+  const handleStep = useCallback((minutes: number) => {
+    const next = new Date(currentTime.getTime() + minutes * 60 * 1000);
+    onTimeChange(next);
+  }, [currentTime, onTimeChange]);
 
   const togglePlay = useCallback(() => {
     setIsPlaying((p) => !p);
@@ -100,10 +107,20 @@ export function TimelineSlider({
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm text-gray-400">Timeline</div>
         <div className="flex items-center gap-2">
+          {onAnchor && (
+            <button
+              onClick={onAnchor}
+              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white"
+            >
+              Anchor
+            </button>
+          )}
           {showNow && (
             <button
               onClick={handleReset}
-              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white"
+              disabled={currentTime.getTime() < minTime || currentTime.getTime() > maxTime}
+              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white disabled:opacity-50"
+              title={currentTime.getTime() < minTime || currentTime.getTime() > maxTime ? 'Now is outside range' : 'Jump to now'}
             >
               Now
             </button>
@@ -161,6 +178,34 @@ export function TimelineSlider({
         <span>-{rangeDays}d</span>
         <span>Anchor</span>
         <span>+{rangeDays}d</span>
+      </div>
+
+      {/* Fine controls */}
+      <div className="flex gap-2 mt-3 text-xs">
+        <button
+          onClick={() => handleStep(-5)}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+        >
+          -5m
+        </button>
+        <button
+          onClick={() => handleStep(-1)}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+        >
+          -1m
+        </button>
+        <button
+          onClick={() => handleStep(1)}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+        >
+          +1m
+        </button>
+        <button
+          onClick={() => handleStep(5)}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+        >
+          +5m
+        </button>
       </div>
     </div>
   );
