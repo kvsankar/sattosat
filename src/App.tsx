@@ -140,8 +140,29 @@ export default function App() {
     if (tlesAForCurve.length === 0 || tlesBForCurve.length === 0) return [];
     const start = new Date(anchorTime.getTime() - SEARCH_RANGE_DAYS * DAY_MS);
     const end = new Date(anchorTime.getTime() + SEARCH_RANGE_DAYS * DAY_MS);
-    return sampleDistanceCurve(tlesAForCurve, tlesBForCurve, start, end, 220);
-  }, [allTlesA, allTlesB, tleA, tleB, anchorTime]);
+    const base = sampleDistanceCurve(tlesAForCurve, tlesBForCurve, start, end, 220);
+
+    // Ensure we render known close-approach points even if coarse sampling misses them
+    const extraPoints: { time: Date; distance: number }[] = [];
+    if (typeof currentDistance === 'number' && currentTime >= start && currentTime <= end) {
+      extraPoints.push({ time: currentTime, distance: currentDistance });
+    }
+    if (conjunctions.length) {
+      for (const conj of conjunctions) {
+        if (conj.time >= start && conj.time <= end) {
+          extraPoints.push({ time: conj.time, distance: conj.distance });
+        }
+      }
+    }
+
+    if (extraPoints.length === 0) return base;
+
+    const merged = new Map<number, { time: Date; distance: number }>();
+    for (const s of base) merged.set(s.time.getTime(), s);
+    for (const extra of extraPoints) merged.set(extra.time.getTime(), extra);
+
+    return Array.from(merged.values()).sort((a, b) => a.time.getTime() - b.time.getTime());
+  }, [allTlesA, allTlesB, tleA, tleB, anchorTime, currentDistance, currentTime, conjunctions]);
 
   // Handlers
   const handleSelectA = useCallback((entry: SatelliteCatalogEntry | null) => {
