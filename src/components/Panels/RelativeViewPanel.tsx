@@ -383,7 +383,26 @@ function RelativeScene({
         color="#fff9ec"
       />
       <group>
-        <mesh position={relThree} rotation={new THREE.Euler().setFromQuaternion(panelRotation)}>
+        {showTrack && trackPast.length > 1 && (
+          <Line
+            points={trackPast}
+            color="#22c55e"
+            lineWidth={2}
+            dashed
+            dashSize={0.2}
+            gapSize={0.1}
+            renderOrder={0}
+          />
+        )}
+        {showTrack && trackFuture.length > 1 && (
+          <Line
+            points={trackFuture}
+            color="#22c55e"
+            lineWidth={2.5}
+            renderOrder={0}
+          />
+        )}
+        <mesh position={relThree} rotation={new THREE.Euler().setFromQuaternion(panelRotation)} renderOrder={5}>
           <planeGeometry args={[panelSize.width, panelSize.height]} />
           <meshStandardMaterial
             color="#ef4444"
@@ -404,6 +423,7 @@ function RelativeScene({
             dashed
             dashSize={0.2}
             gapSize={0.1}
+            renderOrder={6}
           />
         )}
         <Html
@@ -427,7 +447,7 @@ function RelativeScene({
         </Html>
 
         {/* Earth sphere if within view volume */}
-        <mesh position={earthThree}>
+        <mesh position={earthThree} renderOrder={3}>
           <sphereGeometry args={[earthRadiusScaled, 32, 32]} />
           <meshStandardMaterial color="#1e3a8a" transparent opacity={0.35} />
         </mesh>
@@ -441,6 +461,7 @@ function RelativeScene({
             ]}
             color="#38bdf8"
             lineWidth={0.75}
+            renderOrder={10}
           />
         )}
         {/* Velocity direction from B */}
@@ -453,6 +474,7 @@ function RelativeScene({
               ]}
               color="#f97316"
               lineWidth={1.2}
+              renderOrder={11}
             />
             <mesh
               position={[
@@ -460,6 +482,7 @@ function RelativeScene({
                 relThree[1] + velocityDir.y * 2,
                 relThree[2] + velocityDir.z * 2,
               ]}
+              renderOrder={11}
             >
               <coneGeometry args={[0.05, 0.12, 8]} />
               <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={0.4} />
