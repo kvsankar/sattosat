@@ -50,6 +50,9 @@ export function useTLE(noradId: number | null, targetTime: Date): UseTLEResult {
       setLoading(false);
       setError(null);
       setCacheInfo(null);
+      setAvailableTles([]);
+      setAllTles([]);
+      setPreferredEpoch(null);
       return;
     }
 
