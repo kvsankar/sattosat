@@ -161,30 +161,16 @@ function AntiSolarMarker({ sunDirection }: { sunDirection: [number, number, numb
     return v.normalize();
   }, [sunDirection]);
   const pos = dir.clone().multiplyScalar(1.02);
-  const ref = Math.abs(dir.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
-  const u = new THREE.Vector3().crossVectors(dir, ref).normalize().multiplyScalar(0.05);
-  const v = new THREE.Vector3().crossVectors(dir, u).normalize().multiplyScalar(0.05);
-  const circlePoints: [number, number, number][] = [];
-  const segments = 32;
-  for (let i = 0; i <= segments; i++) {
-    const t = (i / segments) * Math.PI * 2;
-    const p = new THREE.Vector3().addVectors(
-      u.clone().multiplyScalar(Math.cos(t)),
-      v.clone().multiplyScalar(Math.sin(t))
-    );
-    circlePoints.push([pos.x + p.x, pos.y + p.y, pos.z + p.z]);
-  }
   return (
     <group position={[pos.x, pos.y, pos.z]}>
       <mesh>
         <sphereGeometry args={[0.02, 12, 12]} />
         <meshStandardMaterial color="#facc15" emissive="#facc15" emissiveIntensity={1} />
       </mesh>
-      <Line
-        points={circlePoints}
-        color="#facc15"
-        lineWidth={1}
-      />
+      <mesh rotation={new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir))}>
+        <circleGeometry args={[0.05, 32]} />
+        <meshBasicMaterial color="#facc15" transparent opacity={0.2} side={THREE.DoubleSide} />
+      </mesh>
     </group>
   );
 }
