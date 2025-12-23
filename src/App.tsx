@@ -127,13 +127,15 @@ export default function App() {
   const { position: positionA, orbitPath: orbitPathA } = useSatellitePosition(activeTleA, currentTime);
   const { position: positionB, orbitPath: orbitPathB } = useSatellitePosition(activeTleB, currentTime);
   const profileActive = !!selectedProfileName;
-  const hasSatellites = !!activeTleA && !!activeTleB && !!positionA && !!positionB;
+  const hasSatA = !!activeTleA && !!positionA;
+  const hasSatB = !!activeTleB && !!positionB;
+  const hasPair = hasSatA && hasSatB;
   useEffect(() => {
-    if (!hasSatellites) {
+    if (!hasPair) {
       setShowMainLos(false);
       setShowMainSunLine(false);
     }
-  }, [hasSatellites]);
+  }, [hasPair]);
 
   // Find conjunctions
   const {
@@ -144,6 +146,7 @@ export default function App() {
   } = useConjunctions(tleA, tleB, allTlesA, allTlesB, currentTime, SEARCH_RANGE_DAYS, anchorTime);
 
   const distanceSamples = useMemo(() => {
+    if (!hasPair) return [];
     const tlesAForCurve = allTlesA.length ? allTlesA : (tleA ? [tleA] : []);
     const tlesBForCurve = allTlesB.length ? allTlesB : (tleB ? [tleB] : []);
     if (tlesAForCurve.length === 0 || tlesBForCurve.length === 0) return [];
@@ -229,7 +232,7 @@ export default function App() {
       const now = new Date();
       setAnchorTime(now);
       setCurrentTime(now);
-      setAutoNow(true);
+      setAutoNow(false);
       setSelectedIdA(null);
       setSelectedIdB(null);
       setPreferredEpochA(null);
@@ -260,12 +263,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profiles.length]);
 
-  // When no profile is active, keep time advancing at real-time 1x
+  // When no profile is active, pin time to selection moment (no animation)
   useEffect(() => {
     if (!selectedProfileName) {
-      setAutoNow(true);
-      setCurrentTime(new Date());
-      setAnchorTime(new Date());
+      const now = new Date();
+      setAutoNow(false);
+      setCurrentTime(now);
+      setAnchorTime(now);
     }
   }, [selectedProfileName]);
 
@@ -399,7 +403,7 @@ export default function App() {
             anchorTime={anchorTime}
             showNow={true}
             disabled={false}
-            initialPlaying={!selectedProfileName}
+            initialPlaying={false}
           />
         </div>
 
