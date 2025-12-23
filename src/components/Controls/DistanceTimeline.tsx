@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import type { DistanceSample } from '../../lib/conjunctions';
 
 interface DistanceTimelineProps {
@@ -22,7 +22,7 @@ export function DistanceTimeline({
   onCollapse,
   currentDistanceKm,
 }: DistanceTimelineProps) {
-  const rawStats = useMemo(() => {
+  const stats = useMemo(() => {
     if (!samples.length) return null;
     const distances = samples.map(s => s.distance);
     if (typeof currentDistanceKm === 'number') distances.push(currentDistanceKm);
@@ -32,46 +32,6 @@ export function DistanceTimeline({
     const end = samples[samples.length - 1]!.time.getTime();
     return { min, max, start, end };
   }, [samples, currentDistanceKm]);
-
-  // Zoom state (applies to both axes)
-  const [zoom, setZoom] = useState({ x: 1, y: 1, xCenter: 0, yCenter: 0 });
-
-  // Reset zoom when data changes
-  useEffect(() => {
-    if (!rawStats) return;
-    const midX = (rawStats.start + rawStats.end) / 2;
-    const midY = (rawStats.min + rawStats.max) / 2;
-    setZoom({ x: 1, y: 1, xCenter: midX, yCenter: midY });
-  }, [rawStats?.start, rawStats?.end, rawStats?.min, rawStats?.max]);
-
-  const stats = useMemo(() => {
-    if (!rawStats) return null;
-    const baseSpanX = Math.max(rawStats.end - rawStats.start, 1);
-    const baseSpanY = Math.max(rawStats.max - rawStats.min, 1);
-
-    const halfSpanX = baseSpanX / (2 * zoom.x);
-    const halfSpanY = baseSpanY / (2 * zoom.y);
-
-    const centerX = isFinite(zoom.xCenter) ? zoom.xCenter : (rawStats.start + rawStats.end) / 2;
-    const centerY = isFinite(zoom.yCenter) ? zoom.yCenter : (rawStats.min + rawStats.max) / 2;
-
-    const start = Math.max(rawStats.start, centerX - halfSpanX);
-    const end = Math.min(rawStats.end, centerX + halfSpanX);
-    const min = Math.max(rawStats.min, centerY - halfSpanY);
-    const max = Math.min(rawStats.max, centerY + halfSpanY);
-
-    return {
-      min,
-      max,
-      start,
-      end,
-      raw: rawStats,
-      halfSpanX,
-      halfSpanY,
-      centerX,
-      centerY,
-    };
-  }, [rawStats, zoom.x, zoom.y, zoom.xCenter, zoom.yCenter]);
 
   const viewBoxWidth = 1300;
   const viewBoxHeight = Math.max(140, height - 20);
@@ -86,10 +46,7 @@ export function DistanceTimeline({
     const scaleX = (t: number) => padding.left + ((t - start) / (end - start)) * innerW;
     const scaleY = (d: number) => padding.top + innerH - ((d - min) / span) * innerH;
 
-    const visible = samples.filter(s => s.time.getTime() >= start && s.time.getTime() <= end);
-    const points = visible.length ? visible : samples;
-
-    return points
+    return samples
       .map((s, i) => {
         const x = scaleX(s.time.getTime());
         const y = scaleY(s.distance);
@@ -112,124 +69,6 @@ export function DistanceTimeline({
     [onTimeChange, stats, padding.left, padding.right]
   );
 
-  const handleZoom = useCallback((factor: number, focus: { x: number; y: number } | null) => {
-    setZoom(prev => {
-      const nextX = Math.min(50, Math.max(1, prev.x * factor));
-      const nextY = Math.min(50, Math.max(1, prev.y * factor));
-      if (!stats || !focus) {
-        return { ...prev, x: nextX, y: nextY };
-      }
-      return {
-        x: nextX,
-        y: nextY,
-        xCenter: focus.x,
-        yCenter: focus.y,
-      };
-    });
-  }, [stats]);
-
-  const handleWheel = useCallback((event: React.WheelEvent<SVGSVGElement>) => {
-    if (!stats) return;
-    event.preventDefault();
-    const rect = (event.currentTarget as SVGSVGElement).getBoundingClientRect();
-    const ratioX = Math.min(
-      1,
-      Math.max(0, (event.clientX - rect.left - padding.left) / (rect.width - padding.left - padding.right))
-    );
-    const ratioY = Math.min(
-      1,
-      Math.max(0, (event.clientY - rect.top - padding.top) / (rect.height - padding.top - padding.bottom))
-    );
-    const focusX = stats.start + ratioX * (stats.end - stats.start);
-    const focusY = stats.max - ratioY * (stats.max - stats.min);
-    const factor = event.deltaY < 0 ? 1.2 : 0.8;
-    handleZoom(factor, { x: focusX, y: focusY });
-  }, [handleZoom, stats, padding.left, padding.right, padding.top, padding.bottom]);
-
-  const resetZoom = useCallback(() => {
-    if (!rawStats) return;
-    const midX = (rawStats.start + rawStats.end) / 2;
-    const midY = (rawStats.min + rawStats.max) / 2;
-    setZoom({ x: 1, y: 1, xCenter: midX, yCenter: midY });
-  }, [rawStats]);
-
-  const [hover, setHover] = useState<{ x: number; y: number; time: number; distance: number } | null>(null);
-  const isPanning = useRef(false);
-  const panStart = useRef<{ x: number; y: number; centerX: number; centerY: number } | null>(null);
-
-  const clampCenter = useCallback((nextCenterX: number, nextCenterY: number, base: typeof rawStats, spanX: number, spanY: number) => {
-    const minCenterX = base.start + spanX;
-    const maxCenterX = base.end - spanX;
-    const minCenterY = base.min + spanY;
-    const maxCenterY = base.max - spanY;
-    return {
-      xCenter: Math.min(maxCenterX, Math.max(minCenterX, nextCenterX)),
-      yCenter: Math.min(maxCenterY, Math.max(minCenterY, nextCenterY)),
-    };
-  }, []);
-
-  const handlePanStart = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
-    if (!stats || !rawStats || event.button !== 0) return;
-    isPanning.current = true;
-    panStart.current = {
-      x: event.clientX,
-      y: event.clientY,
-      centerX: stats.centerX,
-      centerY: stats.centerY,
-    };
-  }, [rawStats, stats]);
-
-  const handlePanMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
-    if (!isPanning.current || !panStart.current || !stats || !rawStats) return;
-    const dx = event.clientX - panStart.current.x;
-    const dy = event.clientY - panStart.current.y;
-    const spanX = stats.end - stats.start;
-    const spanY = stats.max - stats.min;
-    const deltaX = (dx / innerW) * spanX;
-    const deltaY = (dy / innerH) * spanY;
-
-    setZoom(prev => {
-      const { xCenter, yCenter } = clampCenter(
-        panStart.current!.centerX - deltaX,
-        panStart.current!.centerY + deltaY,
-        rawStats,
-        stats.halfSpanX,
-        stats.halfSpanY
-      );
-      return { ...prev, xCenter, yCenter };
-    });
-  }, [clampCenter, rawStats, stats, innerW, innerH]);
-
-  const handlePanEnd = useCallback(() => {
-    isPanning.current = false;
-    panStart.current = null;
-  }, []);
-
-  const handleMouseMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
-    if (isPanning.current) {
-      handlePanMove(event);
-      return;
-    }
-    if (!stats) return;
-    const rect = (event.currentTarget as SVGSVGElement).getBoundingClientRect();
-    const ratioX = Math.min(
-      1,
-      Math.max(0, (event.clientX - rect.left - padding.left) / (rect.width - padding.left - padding.right))
-    );
-    const ratioY = Math.min(
-      1,
-      Math.max(0, (event.clientY - rect.top - padding.top) / (rect.height - padding.top - padding.bottom))
-    );
-    const time = stats.start + ratioX * (stats.end - stats.start);
-    const distance = stats.max - ratioY * (stats.max - stats.min);
-    setHover({ x: event.clientX, y: event.clientY, time, distance });
-  }, [handlePanMove, padding.bottom, padding.left, padding.right, padding.top, stats]);
-
-  const handleMouseLeave = useCallback(() => {
-    setHover(null);
-    handlePanEnd();
-  }, [handlePanEnd]);
-
   if (!stats) {
     return (
       <div className="bg-gray-900/90 border border-gray-700 rounded-lg p-3 text-gray-400 text-sm h-full">
@@ -238,7 +77,7 @@ export function DistanceTimeline({
     );
   }
 
-  const { min, max, start, end, raw } = stats;
+  const { min, max, start, end } = stats;
   const scaleX = (t: number) => padding.left + ((t - start) / (end - start)) * innerW;
   const spanLabel = `${-rangeDays}d to +${rangeDays}d`;
   const currentX = scaleX(currentTime.getTime());
@@ -288,7 +127,7 @@ export function DistanceTimeline({
     for (let v = start; v <= end + 1e-6; v += step) {
       ticks.push(v);
     }
-        return ticks;
+    return ticks;
   }, [min, max]);
 
   return (
@@ -304,50 +143,16 @@ export function DistanceTimeline({
       )}
       <div className="flex items-center justify-between text-xs text-gray-200 mb-1 pr-8">
         <div className="font-semibold">Distance timeline ({spanLabel})</div>
-        <div className="flex items-center gap-2">
-          <div className="flex">
-            <button
-              onClick={() => handleZoom(1.2, { x: (start + end) / 2, y: (min + max) / 2 })}
-              className="px-2 py-1 bg-gray-800 text-gray-200 rounded-l border border-gray-700 hover:bg-gray-700"
-              title="Zoom in"
-            >
-              +
-            </button>
-            <button
-              onClick={() => handleZoom(0.8, { x: (start + end) / 2, y: (min + max) / 2 })}
-              className="px-2 py-1 bg-gray-800 text-gray-200 border-t border-b border-gray-700 hover:bg-gray-700"
-              title="Zoom out"
-            >
-              −
-            </button>
-            <button
-              onClick={resetZoom}
-              className="px-2 py-1 bg-gray-800 text-gray-200 rounded-r border border-gray-700 hover:bg-gray-700"
-              title="Reset zoom"
-            >
-              Reset
-            </button>
-          </div>
-          <div className="flex flex-col items-end text-gray-300">
-            <span>min {raw.min.toFixed(1)} km · max {raw.max.toFixed(1)} km</span>
-            {typeof currentDistanceKm === 'number' && (
-              <span className="text-[11px] text-gray-400">
-                Current {currentDistanceKm.toFixed(1)} km @ {formatTime(currentTime.getTime())}
-              </span>
-            )}
-          </div>
+        <div className="flex flex-col items-end text-gray-300">
+          <span>min {min.toFixed(1)} km · max {max.toFixed(1)} km</span>
+          {typeof currentDistanceKm === 'number' && (
+            <span className="text-[11px] text-gray-400">
+              Current {currentDistanceKm.toFixed(1)} km @ {formatTime(currentTime.getTime())}
+            </span>
+          )}
         </div>
       </div>
-      <svg
-        viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-        className="w-full h-full cursor-crosshair"
-        onClick={handleClick}
-        onWheel={handleWheel}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onMouseDown={handlePanStart}
-        onMouseUp={handlePanEnd}
-      >
+      <svg viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} className="w-full h-full cursor-crosshair" onClick={handleClick}>
         <defs>
           <linearGradient id="distFill" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
@@ -442,39 +247,7 @@ export function DistanceTimeline({
             </text>
           </g>
         )}
-        {/* Hover crosshair */}
-        {hover && (
-          <g>
-            <line
-              x1={padding.left}
-              x2={viewBoxWidth - padding.right}
-              y1={hover ? padding.top + innerH - ((hover.distance - min) / (max - min)) * innerH : 0}
-              y2={hover ? padding.top + innerH - ((hover.distance - min) / (max - min)) * innerH : 0}
-              stroke="#9ca3af"
-              strokeDasharray="4 2"
-              strokeWidth="0.5"
-            />
-            <line
-              x1={hover ? padding.left + ((hover.time - start) / (end - start)) * innerW : 0}
-              x2={hover ? padding.left + ((hover.time - start) / (end - start)) * innerW : 0}
-              y1={padding.top}
-              y2={viewBoxHeight - padding.bottom}
-              stroke="#9ca3af"
-              strokeDasharray="4 2"
-              strokeWidth="0.5"
-            />
-          </g>
-        )}
       </svg>
-      {hover && (
-        <div
-          className="absolute text-[11px] bg-gray-900/90 text-gray-100 border border-gray-700 rounded px-2 py-1 pointer-events-none"
-          style={{ left: hover.x + 10, top: hover.y - 10 }}
-        >
-          <div>{formatTime(hover.time)}</div>
-          <div>{hover.distance.toFixed(1)} km</div>
-        </div>
-      )}
       <div className="flex justify-between text-[11px] text-gray-400 mt-1">
         <span>-{rangeDays}d</span>
         <span>Anchor</span>
