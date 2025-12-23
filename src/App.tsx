@@ -390,6 +390,7 @@ export default function App() {
         {/* Timeline Controls */}
         <div className="mb-6">
           <TimelineSlider
+            key={selectedProfileName ?? 'none'}
             currentTime={currentTime}
             onTimeChange={handleTimeChange}
             onNow={handleNow}
@@ -398,6 +399,7 @@ export default function App() {
             anchorTime={anchorTime}
             showNow={true}
             disabled={false}
+            initialPlaying={!selectedProfileName}
           />
         </div>
 

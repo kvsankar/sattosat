@@ -9,6 +9,7 @@ interface TimelineSliderProps {
   anchorTime?: Date;
   showNow?: boolean;
   disabled?: boolean;
+  initialPlaying?: boolean;
 }
 
 const SPEEDS = [1, 10, 100, 1000];
@@ -22,9 +23,10 @@ export function TimelineSlider({
   anchorTime,
   showNow = true,
   disabled = false,
+  initialPlaying = false,
 }: TimelineSliderProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [speedIndex, setSpeedIndex] = useState(1); // Default 10x
+  const [isPlaying, setIsPlaying] = useState(initialPlaying);
+  const [speedIndex, setSpeedIndex] = useState(initialPlaying ? 0 : 1); // Default 10x unless auto-play at 1x
 
   const anchor = anchorTime ?? new Date();
   const minTime = anchor.getTime() - rangeDays * 24 * 60 * 60 * 1000;
@@ -88,6 +90,12 @@ export function TimelineSlider({
     if (disabled) return;
     setSpeedIndex((i) => (i + 1) % SPEEDS.length);
   }, [disabled]);
+
+  // Animation loop
+  useEffect(() => {
+    setIsPlaying(initialPlaying);
+    if (initialPlaying) setSpeedIndex(0);
+  }, [initialPlaying]);
 
   // Animation loop
   useEffect(() => {
