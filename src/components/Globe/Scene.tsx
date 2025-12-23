@@ -163,10 +163,6 @@ function AntiSolarMarker({ sunDirection }: { sunDirection: [number, number, numb
   const pos = dir.clone().multiplyScalar(1.02);
   return (
     <group position={[pos.x, pos.y, pos.z]}>
-      <mesh>
-        <sphereGeometry args={[0.02, 12, 12]} />
-        <meshStandardMaterial color="#facc15" emissive="#facc15" emissiveIntensity={1} />
-      </mesh>
       <mesh rotation={new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir))}>
         <circleGeometry args={[0.05, 32]} />
         <meshBasicMaterial color="#facc15" transparent opacity={0.2} side={THREE.DoubleSide} />
