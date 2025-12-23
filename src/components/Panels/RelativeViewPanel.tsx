@@ -223,9 +223,7 @@ function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, velB,
     const q = new THREE.Quaternion();
     const longAxis = velocityDir ?? new THREE.Vector3(1, 0, 0);
     if (longAxis.length() === 0) return q;
-    // Use Sun→B direction (flip sign) so the visible face matches expected lighting
-    const sunToBDir = sunFromBDir.clone().negate();
-    const sunProj = sunToBDir.clone().sub(longAxis.clone().multiplyScalar(sunToBDir.dot(longAxis)));
+    const sunProj = sunFromBDir.clone().sub(longAxis.clone().multiplyScalar(sunFromBDir.dot(longAxis)));
     const normalAxis = sunProj.length() > 0 ? sunProj.normalize() : new THREE.Vector3(0, 0, 1);
     const shortAxis = normalAxis.clone().cross(longAxis).normalize();
     const correctedNormal = longAxis.clone().cross(shortAxis).normalize();
