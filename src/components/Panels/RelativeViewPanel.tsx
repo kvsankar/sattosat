@@ -375,10 +375,11 @@ function RelativeScene({
   showSunLine,
   showTrack,
   showVelocity,
+  lockView,
 }: RelativeSceneProps) {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   useFrame(() => {
-    if (cameraRef.current) {
+    if (lockView && cameraRef.current) {
       const cam = cameraRef.current;
       cam.position.set(0, 0, 0.00001);
       cam.lookAt(relThree[0], relThree[1], relThree[2]);
