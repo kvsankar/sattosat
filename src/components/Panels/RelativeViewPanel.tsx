@@ -392,6 +392,8 @@ function RelativeScene({
             dashSize={0.2}
             gapSize={0.1}
             renderOrder={0}
+            depthTest={false}
+            depthWrite={false}
           />
         )}
         {showTrack && trackFuture.length > 1 && (
@@ -400,6 +402,8 @@ function RelativeScene({
             color="#22c55e"
             lineWidth={2.5}
             renderOrder={0}
+            depthTest={false}
+            depthWrite={false}
           />
         )}
         <mesh position={relThree} rotation={new THREE.Euler().setFromQuaternion(panelRotation)} renderOrder={5}>
