@@ -127,19 +127,16 @@ export function SatelliteSelector({
       {availableTles.length > 0 && onSelectTleEpoch && (
         <div className="mt-2 space-y-1">
           <div className="text-xs text-gray-500">TLE epoch</div>
-          <div className="flex flex-col gap-1">
-            <button
-              onClick={() => onSelectTleEpoch(null)}
-              className={`flex items-center justify-between px-2 py-1 rounded text-xs border ${
-                selectedTleEpoch === null
-                  ? 'bg-blue-700 text-white border-blue-500'
-                  : 'bg-gray-800 text-gray-200 border-gray-600 hover:bg-gray-700'
-              }`}
-            >
-              <span className="text-left">
-                Auto (nearest to timeline)
-              </span>
-            </button>
+          <select
+            value={selectedTleEpoch ?? 'auto'}
+            onChange={(e) => {
+              const val = e.target.value === 'auto' ? null : e.target.value;
+              onSelectTleEpoch(val);
+            }}
+            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+            style={{ whiteSpace: 'pre' }}
+          >
+            <option value="auto">Auto (nearest to timeline)</option>
             {availableTles
               .slice()
               .sort((a, b) => b.epoch.getTime() - a.epoch.getTime())
@@ -147,26 +144,17 @@ export function SatelliteSelector({
                 const iso = t.epoch.toISOString();
                 const date = iso.slice(0, 10);
                 const time = iso.slice(11, 19) + ' UTC';
-                const selected = selectedTleEpoch === iso;
                 return (
-                  <button
+                  <option
                     key={idx}
-                    onClick={() => onSelectTleEpoch(iso)}
-                    className={`flex flex-col items-start px-2 py-1 rounded text-xs border ${
-                      selected
-                        ? 'bg-blue-700 text-white border-blue-500'
-                        : 'bg-gray-800 text-gray-200 border-gray-600 hover:bg-gray-700'
-                    }`}
+                    value={t.epoch.toISOString()}
+                    style={{ whiteSpace: 'pre' }}
                   >
-                    <span className="font-mono">{date}</span>
-                    <span className="font-mono">{time}</span>
-                    <span className="text-[10px] text-gray-400">
-                      cached {formatCacheAge(t.cacheTimestamp)}
-                    </span>
-                  </button>
+                    {`${date}\u000A${time}`} ({formatCacheAge(t.cacheTimestamp)})
+                  </option>
                 );
               })}
-          </div>
+          </select>
         </div>
       )}
       </div>
