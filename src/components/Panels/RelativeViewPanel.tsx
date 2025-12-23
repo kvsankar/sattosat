@@ -42,6 +42,7 @@ export function RelativeViewPanel({ positionA, positionB, currentTime }: Relativ
       phaseAngleDeg,
       earthInfo,
       scale,
+      velB: positionB.velocity,
     };
   }, [currentTime, positionA, positionB]);
 
@@ -115,6 +116,7 @@ export function RelativeViewPanel({ positionA, positionB, currentTime }: Relativ
                   sunEci={derived.sunEci}
                   fov={computedFov}
                   sunFromB={derived.sunFromB}
+                  velB={derived.velB}
                   earthPosition={{
                     x: -positionA!.eci.x,
                     y: -positionA!.eci.y,
@@ -181,10 +183,11 @@ interface RelativeViewCanvasProps {
   scale: number;
   sunEci: { x: number; y: number; z: number };
   sunFromB: { x: number; y: number; z: number };
+  velB?: { x: number; y: number; z: number };
   fov: number;
 }
 
-function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, fov }: RelativeViewCanvasProps) {
+function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, velB, fov }: RelativeViewCanvasProps) {
   const relThree = useMemo(() => eciToThree(rel, scale), [rel, scale]);
   const earthThree = useMemo(() => eciToThree(earthPosition, scale), [earthPosition, scale]);
   const sunDirThree = useMemo(() => {
@@ -208,14 +211,33 @@ function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, fov }
 
   const earthRadiusScaled = EARTH_RADIUS_KM * scale;
 
+  const velocityDir = useMemo(() => {
+    if (!velB) return null;
+    const vec = eciToThree(velB, 1);
+    const v = new THREE.Vector3(...vec);
+    if (v.length() === 0) return null;
+    return v.normalize();
+  }, [velB]);
+
   const panelRotation = useMemo(() => {
     const q = new THREE.Quaternion();
-    // Plane faces +Z by default; align with sun direction (incoming from Sun to B)
-    const targetNormal = sunFromBDir.clone();
-    if (targetNormal.length() === 0) return q;
-    q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), targetNormal);
+    const longAxis = velocityDir ?? new THREE.Vector3(1, 0, 0);
+    if (longAxis.length() === 0) return q;
+    const sunProj = sunFromBDir.clone().sub(longAxis.clone().multiplyScalar(sunFromBDir.dot(longAxis)));
+    const normalAxis = sunProj.length() > 0 ? sunProj.normalize() : new THREE.Vector3(0, 0, 1);
+    const shortAxis = normalAxis.clone().cross(longAxis).normalize();
+    const correctedNormal = longAxis.clone().cross(shortAxis).normalize();
+    if (shortAxis.length() === 0 || correctedNormal.length() === 0) return q;
+    const m = new THREE.Matrix4();
+    m.set(
+      longAxis.x, shortAxis.x, correctedNormal.x, 0,
+      longAxis.y, shortAxis.y, correctedNormal.y, 0,
+      longAxis.z, shortAxis.z, correctedNormal.z, 0,
+      0, 0, 0, 1
+    );
+    q.setFromRotationMatrix(m);
     return q;
-  }, [sunFromBDir]);
+  }, [sunFromBDir, velocityDir]);
 
   return (
     <Canvas>
