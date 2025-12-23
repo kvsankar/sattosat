@@ -6,10 +6,10 @@ import { getGMST } from '../../lib/sun';
 // Earth radius = 1 unit in our scene
 const EARTH_RADIUS = 1;
 
-// NASA Blue Marble texture URLs (public domain)
-const EARTH_TEXTURE_URL = 'https://unpkg.com/three-globe@2.31.0/example/img/earth-blue-marble.jpg';
-const EARTH_NIGHT_URL = 'https://unpkg.com/three-globe@2.31.0/example/img/earth-night.jpg';
-const EARTH_BUMP_URL = 'https://unpkg.com/three-globe@2.31.0/example/img/earth-topology.png';
+// NASA Blue Marble textures (cached locally under /public)
+const EARTH_TEXTURE_URL = '/earth-blue-marble.jpg';
+const EARTH_NIGHT_URL = '/earth-night.jpg';
+const EARTH_BUMP_URL = '/earth-topology.png';
 
 interface EarthProps {
   currentTime: Date;
