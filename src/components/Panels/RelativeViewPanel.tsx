@@ -501,6 +501,9 @@ function RelativeScene({
             dashed
             dashSize={0.2}
             gapSize={0.1}
+            renderOrder={0}
+            depthTest={false}
+            depthWrite={false}
           />
         )}
         {showTrack && trackFuture.length > 1 && (
@@ -508,6 +511,9 @@ function RelativeScene({
             points={trackFuture}
             color="#22c55e"
             lineWidth={2.5}
+            renderOrder={0}
+            depthTest={false}
+            depthWrite={false}
           />
         )}
       </group>
