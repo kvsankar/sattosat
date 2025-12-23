@@ -413,7 +413,13 @@ export default function App() {
         paddingRight: relativeCollapsed ? 16 : RELATIVE_PANEL_WIDTH + 32,
         paddingBottom: timelineCollapsed ? 16 : TIMELINE_HEIGHT + 24
       }}>
-        <div className="absolute inset-0">
+        <div
+          className="absolute inset-0"
+          style={{
+            right: relativeCollapsed ? 0 : RELATIVE_PANEL_WIDTH + 32,
+            bottom: (!timelineCollapsed || !viewToggleCollapsed) ? TIMELINE_HEIGHT + 24 : 0
+          }}
+        >
           <Scene
             satelliteA={
               activeTleA

@@ -33,9 +33,9 @@ export function DistanceTimeline({
     return { min, max, start, end };
   }, [samples, currentDistanceKm]);
 
-  const viewBoxWidth = 900;
+  const viewBoxWidth = 1300;
   const viewBoxHeight = Math.max(140, height - 20);
-  const padding = { left: 60, right: 16, top: 12, bottom: 28 };
+  const padding = { left: 60, right: 24, top: 12, bottom: 28 };
   const innerW = viewBoxWidth - padding.left - padding.right;
   const innerH = viewBoxHeight - padding.top - padding.bottom;
 
@@ -110,16 +110,25 @@ export function DistanceTimeline({
     return Array.from(new Set(ticks.map(t => Math.round(t)))).sort((a, b) => a - b);
   })();
 
-  const yTicks = (() => {
+  const yTicks = useMemo(() => {
     const span = max - min;
     if (span === 0) return [min];
-    const steps = 4;
-    const arr: number[] = [];
-    for (let i = 0; i <= steps; i++) {
-      arr.push(min + (span * i) / steps);
+
+    // Pick a clean step (1/2/5 × 10^n)
+    const roughStep = span / 4;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep || 1)));
+    const candidates = [1, 2, 5].map(f => f * magnitude);
+    const step = candidates.reduce((best, val) =>
+      Math.abs(val - roughStep) < Math.abs(best - roughStep) ? val : best, candidates[0]!);
+
+    const start = Math.floor(min / step) * step;
+    const end = Math.ceil(max / step) * step;
+    const ticks: number[] = [];
+    for (let v = start; v <= end + 1e-6; v += step) {
+      ticks.push(v);
     }
-    return arr;
-  })();
+    return ticks;
+  }, [min, max]);
 
   return (
     <div className="bg-gray-900/95 border border-gray-700 rounded-lg p-3 shadow-lg h-full relative">
