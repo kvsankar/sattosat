@@ -145,7 +145,7 @@ export function SatelliteSelector({
                 const time = iso.slice(11, 19) + ' UTC';
                 return (
                   <option key={idx} value={t.epoch.toISOString()}>
-                    {`${date} ${time}`} ({formatCacheAge(t.cacheTimestamp)})
+                    {`${date} ${time}`}
                   </option>
                 );
               })}
