@@ -8,6 +8,11 @@ interface ConjunctionSearchResult {
   distance: number;
 }
 
+export interface DistanceSample {
+  time: Date;
+  distance: number;
+}
+
 interface SatrecEntry {
   tle: SatelliteTLE;
   satrec: satellite.SatRec;
@@ -238,6 +243,29 @@ function getDistanceAtTime(
   if (!posA || !posB) return Infinity;
 
   return calculateDistance(posA.eci, posB.eci);
+}
+
+// Sample distance curve over a time range for plotting
+export function sampleDistanceCurve(
+  tlesA: SatelliteTLE[],
+  tlesB: SatelliteTLE[],
+  startTime: Date,
+  endTime: Date,
+  samples: number = 180
+): DistanceSample[] {
+  if (!tlesA.length || !tlesB.length || samples <= 1) return [];
+  const cacheA = buildSatrecCache(tlesA);
+  const cacheB = buildSatrecCache(tlesB);
+  const totalMs = endTime.getTime() - startTime.getTime();
+  const stepMs = totalMs / (samples - 1);
+
+  const result: DistanceSample[] = [];
+  for (let i = 0; i < samples; i++) {
+    const t = new Date(startTime.getTime() + i * stepMs);
+    const distance = getDistanceAtTime(cacheA, cacheB, t);
+    result.push({ time: t, distance });
+  }
+  return result;
 }
 
 // Calculate current distance between two satellites

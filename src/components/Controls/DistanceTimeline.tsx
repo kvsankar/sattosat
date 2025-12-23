@@ -1,0 +1,249 @@
+import React, { useMemo, useCallback } from 'react';
+import type { DistanceSample } from '../../lib/conjunctions';
+
+interface DistanceTimelineProps {
+  samples: DistanceSample[];
+  currentTime: Date;
+  anchorTime: Date;
+  rangeDays: number;
+  onTimeChange: (time: Date) => void;
+  height?: number;
+  onCollapse?: () => void;
+  currentDistanceKm?: number;
+}
+
+export function DistanceTimeline({
+  samples,
+  currentTime,
+  anchorTime,
+  rangeDays,
+  onTimeChange,
+  height = 190,
+  onCollapse,
+  currentDistanceKm,
+}: DistanceTimelineProps) {
+  const stats = useMemo(() => {
+    if (!samples.length) return null;
+    const distances = samples.map(s => s.distance);
+    if (typeof currentDistanceKm === 'number') distances.push(currentDistanceKm);
+    const min = Math.min(...distances);
+    const max = Math.max(...distances);
+    const start = samples[0]!.time.getTime();
+    const end = samples[samples.length - 1]!.time.getTime();
+    return { min, max, start, end };
+  }, [samples, currentDistanceKm]);
+
+  const viewBoxWidth = 900;
+  const viewBoxHeight = Math.max(140, height - 20);
+  const padding = { left: 60, right: 16, top: 12, bottom: 28 };
+  const innerW = viewBoxWidth - padding.left - padding.right;
+  const innerH = viewBoxHeight - padding.top - padding.bottom;
+
+  const path = useMemo(() => {
+    if (!samples.length || !stats) return '';
+    const { min, max, start, end } = stats;
+    const span = Math.max(max - min, 1);
+    const scaleX = (t: number) => padding.left + ((t - start) / (end - start)) * innerW;
+    const scaleY = (d: number) => padding.top + innerH - ((d - min) / span) * innerH;
+
+    return samples
+      .map((s, i) => {
+        const x = scaleX(s.time.getTime());
+        const y = scaleY(s.distance);
+        return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+      })
+      .join(' ');
+  }, [samples, stats, padding.left, padding.right, padding.top, padding.bottom, innerW, innerH]);
+
+  const handleClick = useCallback(
+    (event: React.MouseEvent<SVGSVGElement>) => {
+      if (!stats) return;
+      const rect = (event.currentTarget as SVGSVGElement).getBoundingClientRect();
+      const ratio = Math.min(
+        1,
+        Math.max(0, (event.clientX - rect.left - padding.left) / (rect.width - padding.left - padding.right))
+      );
+      const target = stats.start + ratio * (stats.end - stats.start);
+      onTimeChange(new Date(target));
+    },
+    [onTimeChange, stats, padding.left, padding.right]
+  );
+
+  if (!stats) {
+    return (
+      <div className="bg-gray-900/90 border border-gray-700 rounded-lg p-3 text-gray-400 text-sm h-full">
+        Load two satellites to see the distance timeline.
+      </div>
+    );
+  }
+
+  const { min, max, start, end } = stats;
+  const scaleX = (t: number) => padding.left + ((t - start) / (end - start)) * innerW;
+  const spanLabel = `${-rangeDays}d to +${rangeDays}d`;
+  const currentX = scaleX(currentTime.getTime());
+  const anchorX = scaleX(anchorTime.getTime());
+  const currentY = (() => {
+    const dist = typeof currentDistanceKm === 'number'
+      ? currentDistanceKm
+      : samples.length
+        ? samples.reduce((closest, s) => {
+            const diff = Math.abs(s.time.getTime() - currentTime.getTime());
+            const curDiff = Math.abs(closest.time.getTime() - currentTime.getTime());
+            return diff < curDiff ? s : closest;
+          }).distance
+        : null;
+    if (dist === null) return null;
+    const span = Math.max(max - min, 1);
+    return padding.top + innerH - ((dist - min) / span) * innerH;
+  })();
+
+  const formatTime = (t: number) => {
+    const d = new Date(t);
+    return d.toISOString().slice(5, 16).replace('T', ' ');
+  };
+
+  const xTicks = (() => {
+    const ticks: number[] = [start, anchorTime.getTime(), end];
+    const mid1 = start + (end - start) / 4;
+    const mid2 = start + (end - start) * 3 / 4;
+    ticks.push(mid1, mid2);
+    return Array.from(new Set(ticks.map(t => Math.round(t)))).sort((a, b) => a - b);
+  })();
+
+  const yTicks = (() => {
+    const span = max - min;
+    if (span === 0) return [min];
+    const steps = 4;
+    const arr: number[] = [];
+    for (let i = 0; i <= steps; i++) {
+      arr.push(min + (span * i) / steps);
+    }
+    return arr;
+  })();
+
+  return (
+    <div className="bg-gray-900/95 border border-gray-700 rounded-lg p-3 shadow-lg h-full relative">
+      {onCollapse && (
+        <button
+          onClick={onCollapse}
+          className="absolute top-2 right-2 text-gray-300 hover:text-white text-xs bg-gray-800/80 border border-gray-700 rounded px-2 py-0.5"
+          title="Collapse timeline"
+        >
+          ×
+        </button>
+      )}
+      <div className="flex items-center justify-between text-xs text-gray-200 mb-1 pr-8">
+        <div className="font-semibold">Distance timeline ({spanLabel})</div>
+        <div className="flex flex-col items-end text-gray-300">
+          <span>min {min.toFixed(1)} km · max {max.toFixed(1)} km</span>
+          {typeof currentDistanceKm === 'number' && (
+            <span className="text-[11px] text-gray-400">
+              Current {currentDistanceKm.toFixed(1)} km @ {formatTime(currentTime.getTime())}
+            </span>
+          )}
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} className="w-full h-full cursor-crosshair" onClick={handleClick}>
+        <defs>
+          <linearGradient id="distFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#22c55e" stopOpacity="0.05" />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width={viewBoxWidth} height={viewBoxHeight} fill="url(#distFill)" opacity="0.15" />
+        {path && (
+          <>
+            <path d={path} fill="none" stroke="#22c55e" strokeWidth="2" />
+          </>
+        )}
+        {/* X axis */}
+        <line
+          x1={padding.left}
+          x2={viewBoxWidth - padding.right}
+          y1={viewBoxHeight - padding.bottom}
+          y2={viewBoxHeight - padding.bottom}
+          stroke="#374151"
+          strokeWidth="1"
+        />
+        {/* Y axis */}
+        <line
+          x1={padding.left}
+          x2={padding.left}
+          y1={padding.top}
+          y2={viewBoxHeight - padding.bottom}
+          stroke="#374151"
+          strokeWidth="1"
+        />
+
+        {/* Grid + ticks */}
+        {xTicks.map((t, idx) => {
+          const x = scaleX(t);
+          const label = formatTime(t);
+          return (
+            <g key={`x-${idx}`}>
+              <line
+                x1={x}
+                x2={x}
+                y1={padding.top}
+                y2={viewBoxHeight - padding.bottom}
+                stroke="#1f2937"
+                strokeWidth="0.5"
+              />
+              <text
+                x={x}
+                y={viewBoxHeight - padding.bottom + 12}
+                fontSize="10"
+                fill="#9ca3af"
+                textAnchor="middle"
+              >
+                {label}
+              </text>
+            </g>
+          );
+        })}
+        {yTicks.map((d, idx) => {
+          const y = padding.top + innerH - ((d - min) / (max - min || 1)) * innerH;
+          return (
+            <g key={`y-${idx}`}>
+              <line
+                x1={padding.left}
+                x2={viewBoxWidth - padding.right}
+                y1={y}
+                y2={y}
+                stroke="#1f2937"
+                strokeWidth="0.5"
+              />
+              <text
+                x={padding.left - 6}
+                y={y + 3}
+                fontSize="10"
+                fill="#9ca3af"
+                textAnchor="end"
+              >
+                {d.toFixed(0)} km
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Anchor line */}
+        <line x1={anchorX} x2={anchorX} y1={padding.top} y2={viewBoxHeight - padding.bottom} stroke="#fbbf24" strokeDasharray="4 4" strokeWidth="1" />
+        {/* Current time marker */}
+        <line x1={currentX} x2={currentX} y1={padding.top} y2={viewBoxHeight - padding.bottom} stroke="#60a5fa" strokeWidth="2" />
+        {currentY !== null && (
+          <g>
+            <circle cx={currentX} cy={currentY} r={3} fill="#60a5fa" />
+            <text x={currentX + 6} y={currentY - 6} fontSize="10" fill="#bfdbfe">
+              {typeof currentDistanceKm === 'number' ? currentDistanceKm.toFixed(1) : ''} km
+            </text>
+          </g>
+        )}
+      </svg>
+      <div className="flex justify-between text-[11px] text-gray-400 mt-1">
+        <span>-{rangeDays}d</span>
+        <span>Anchor</span>
+        <span>+{rangeDays}d</span>
+      </div>
+    </div>
+  );
+}

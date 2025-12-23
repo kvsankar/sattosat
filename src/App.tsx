@@ -11,10 +11,16 @@ import { addManualTLEs } from './lib/celestrak';
 import { useSatellitePosition } from './hooks/useSatellitePosition';
 import { useConjunctions } from './hooks/useConjunctions';
 import type { SatelliteCatalogEntry, SatelliteTLE } from './types/satellite';
+import { sampleDistanceCurve } from './lib/conjunctions';
 import { profiles, applyProfileTles } from './lib/profiles';
+import { DistanceTimeline } from './components/Controls/DistanceTimeline';
 
 type SortMode = 'date' | 'distance';
 const SEARCH_RANGE_DAYS = 3;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const RELATIVE_PANEL_WIDTH = 384; // px (w-96)
+const CONTROL_PANEL_WIDTH = 224;  // px (w-56)
+const TIMELINE_HEIGHT = 200;      // px for bottom timeline and control panel alignment
 
 function formatCacheAge(timestamp: number): string {
   const ageMs = Date.now() - timestamp;
@@ -46,6 +52,10 @@ export default function App() {
   const [showAntiSolar, setShowAntiSolar] = useState(true);
   const [showMainLos, setShowMainLos] = useState(true);
   const [showMainSunLine, setShowMainSunLine] = useState(true);
+  const [hasAutoJumped, setHasAutoJumped] = useState(true); // start true to avoid unsolicited auto-jumps
+  const [timelineCollapsed, setTimelineCollapsed] = useState(false);
+  const [relativeCollapsed, setRelativeCollapsed] = useState(false);
+  const [viewToggleCollapsed, setViewToggleCollapsed] = useState(false);
 
   // Load satellite catalog
   const {
@@ -125,16 +135,14 @@ export default function App() {
     loading: conjunctionsLoading,
   } = useConjunctions(tleA, tleB, allTlesA, allTlesB, currentTime, SEARCH_RANGE_DAYS, anchorTime);
 
-  // Auto-jump to the approach closest to the anchor when conjunctions refresh
-  useEffect(() => {
-    if (conjunctions.length === 0) return;
-    const target = conjunctions.reduce((closest, current) => {
-      const cdiff = Math.abs(current.time.getTime() - anchorTime.getTime());
-      const bdiff = Math.abs(closest.time.getTime() - anchorTime.getTime());
-      return cdiff < bdiff ? current : closest;
-    }, conjunctions[0]!);
-    setCurrentTime(target.time);
-  }, [conjunctions, anchorTime]);
+  const distanceSamples = useMemo(() => {
+    const tlesAForCurve = allTlesA.length ? allTlesA : (tleA ? [tleA] : []);
+    const tlesBForCurve = allTlesB.length ? allTlesB : (tleB ? [tleB] : []);
+    if (tlesAForCurve.length === 0 || tlesBForCurve.length === 0) return [];
+    const start = new Date(anchorTime.getTime() - SEARCH_RANGE_DAYS * DAY_MS);
+    const end = new Date(anchorTime.getTime() + SEARCH_RANGE_DAYS * DAY_MS);
+    return sampleDistanceCurve(tlesAForCurve, tlesBForCurve, start, end, 220);
+  }, [allTlesA, allTlesB, tleA, tleB, anchorTime]);
 
   // Handlers
   const handleSelectA = useCallback((entry: SatelliteCatalogEntry | null) => {
@@ -147,13 +155,23 @@ export default function App() {
 
   const handleJumpToTime = useCallback((time: Date) => {
     setAutoNow(false);
+    setHasAutoJumped(true);
     setCurrentTime(time);
   }, []);
 
   const handleTimeChange = useCallback((time: Date) => {
     setAutoNow(false);
+    setHasAutoJumped(true);
     setCurrentTime(time);
   }, []);
+
+  const handleAnchorTime = useCallback(() => {
+    setAutoNow(false);
+    const diffMs = Math.abs(currentTime.getTime() - anchorTime.getTime());
+    if (diffMs < 1) return; // Already at anchor, avoid state churn
+    setHasAutoJumped(true);
+    setCurrentTime(new Date(anchorTime));
+  }, [anchorTime, currentTime]);
 
   const handleNow = useCallback(() => {
     if (selectedProfileName) return;
@@ -161,6 +179,7 @@ export default function App() {
     setAnchorTime(now);
     setCurrentTime(now);
     setAutoNow(false);
+    setHasAutoJumped(true);
   }, [selectedProfileName]);
 
   const handlePasteTlesA = useCallback(async (text: string, opts?: { forceNorad?: boolean }): Promise<number> => {
@@ -201,6 +220,7 @@ export default function App() {
     setSelectedIdB(satB);
     setPreferredEpochA(null);
     setPreferredEpochB(null);
+    setHasAutoJumped(true);
   }, [setSelectedIdA, setSelectedIdB]);
 
   // Auto-load the first profile on startup if available
@@ -335,7 +355,7 @@ export default function App() {
             currentTime={currentTime}
             onTimeChange={handleTimeChange}
             onNow={handleNow}
-            onAnchor={() => setCurrentTime(anchorTime)}
+            onAnchor={handleAnchorTime}
             rangeDays={SEARCH_RANGE_DAYS}
             anchorTime={anchorTime}
             showNow={true}
@@ -374,67 +394,141 @@ export default function App() {
       </div>
 
       {/* Main 3D view */}
-      <div className="flex-1 relative">
-        <Scene
-          satelliteA={
-            activeTleA
-              ? {
-                  name: activeTleA.name,
-                  position: positionA,
-                  orbitPath: orbitPathA,
-                }
-              : null
-          }
-          satelliteB={
-            activeTleB
-              ? {
-                  name: activeTleB.name,
-                  position: positionB,
-                  orbitPath: orbitPathB,
-                }
-              : null
-          }
-          currentTime={currentTime}
-          showGrid={showGrid}
-          showTerminator={showTerminator}
-          showAntiSolar={showAntiSolar}
-          showMainLos={showMainLos}
-          showMainSunLine={showMainSunLine}
-        />
-
-        <div className="absolute top-4 right-4 z-40 w-96 max-w-[420px]">
-          <RelativeViewPanel
-            positionA={positionA}
-            positionB={positionB}
+      <div className="flex-1 relative" style={{
+        paddingRight: relativeCollapsed ? 16 : RELATIVE_PANEL_WIDTH + 32,
+        paddingBottom: timelineCollapsed ? 16 : TIMELINE_HEIGHT + 24
+      }}>
+        <div className="absolute inset-0">
+          <Scene
+            satelliteA={
+              activeTleA
+                ? {
+                    name: activeTleA.name,
+                    position: positionA,
+                    orbitPath: orbitPathA,
+                  }
+                : null
+            }
+            satelliteB={
+              activeTleB
+                ? {
+                    name: activeTleB.name,
+                    position: positionB,
+                    orbitPath: orbitPathB,
+                  }
+                : null
+            }
             currentTime={currentTime}
-            orbitPathB={orbitPathB}
+            showGrid={showGrid}
+            showTerminator={showTerminator}
+            showAntiSolar={showAntiSolar}
+            showMainLos={showMainLos}
+            showMainSunLine={showMainSunLine}
           />
         </div>
 
-        {/* Grid toggle button */}
+        {/* Relative view panel (collapsible) */}
+        <div className="absolute top-4 right-4 z-40">
+          {relativeCollapsed ? (
+            <button
+              onClick={() => setRelativeCollapsed(false)}
+              className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
+            >
+              Show A→B view
+            </button>
+          ) : (
+            <div className="w-96 max-w-[420px] relative">
+              <button
+                onClick={() => setRelativeCollapsed(true)}
+                className="absolute -top-3 -right-3 bg-gray-900 border border-gray-700 text-white rounded-full w-8 h-8 shadow-lg text-sm"
+                title="Collapse view panel"
+              >
+                ×
+              </button>
+              <RelativeViewPanel
+                positionA={positionA}
+                positionB={positionB}
+                currentTime={currentTime}
+                orbitPathB={orbitPathB}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Bottom distance timeline (collapsible) */}
+        <div
+          className="absolute left-4 z-30"
+          style={{
+            right: CONTROL_PANEL_WIDTH + 64,
+            bottom: 16,
+            height: timelineCollapsed ? undefined : TIMELINE_HEIGHT
+          }}
+        >
+          {timelineCollapsed ? (
+            <button
+              onClick={() => setTimelineCollapsed(false)}
+              className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
+            >
+              Show timeline
+            </button>
+          ) : (
+            <DistanceTimeline
+              samples={distanceSamples}
+              currentTime={currentTime}
+              anchorTime={anchorTime}
+              rangeDays={SEARCH_RANGE_DAYS}
+              onTimeChange={handleTimeChange}
+              height={TIMELINE_HEIGHT}
+              currentDistanceKm={currentDistance ?? undefined}
+              onCollapse={() => setTimelineCollapsed(true)}
+            />
+          )}
+        </div>
+
         {/* Bottom-right view controls (main view) */}
-        <div className="absolute bottom-4 right-4 z-50 bg-gray-900/95 border border-gray-700 rounded-lg p-3 text-sm text-gray-200 shadow-lg w-56 space-y-2">
-          <div className="text-white font-semibold">View toggles</div>
-          <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} />
-            Show grid
-          </label>
-          <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={showTerminator} onChange={e => setShowTerminator(e.target.checked)} />
-            Show terminator
-          </label>
-          <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={showAntiSolar} onChange={e => setShowAntiSolar(e.target.checked)} />
-            Show anti-solar point
-          </label>
-          <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={showMainLos} onChange={e => setShowMainLos(e.target.checked)} />
-            Show LoS A→B
-          </label>
-          <label className="flex items-center gap-2 text-xs">
-            <input type="checkbox" checked={showMainSunLine} onChange={e => setShowMainSunLine(e.target.checked)} />
-            Show Sun line at B
-          </label>
+        <div
+          className="absolute bottom-4 right-4 z-50"
+          style={{ width: CONTROL_PANEL_WIDTH, height: TIMELINE_HEIGHT }}
+        >
+          {viewToggleCollapsed ? (
+            <button
+              onClick={() => setViewToggleCollapsed(false)}
+              className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
+            >
+              Show view toggles
+            </button>
+          ) : (
+            <div className="bg-gray-900/95 border border-gray-700 rounded-lg p-3 text-sm text-gray-200 shadow-lg w-56 h-full space-y-2 flex flex-col relative">
+              <button
+                onClick={() => setViewToggleCollapsed(true)}
+                className="absolute top-2 right-2 text-gray-300 hover:text-white text-xs bg-gray-800/80 border border-gray-700 rounded px-2 py-0.5"
+                title="Collapse view toggles"
+              >
+                ×
+              </button>
+              <div className="text-gray-200 font-semibold pr-6">View toggles</div>
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} />
+                Show grid
+              </label>
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={showTerminator} onChange={e => setShowTerminator(e.target.checked)} />
+                Show terminator
+              </label>
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={showAntiSolar} onChange={e => setShowAntiSolar(e.target.checked)} />
+                Show anti-solar point
+              </label>
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={showMainLos} onChange={e => setShowMainLos(e.target.checked)} />
+                Show LoS A→B
+              </label>
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={showMainSunLine} onChange={e => setShowMainSunLine(e.target.checked)} />
+                Show Sun line at B
+              </label>
+            </div>
+          )}
         </div>
       </div>
     </div>

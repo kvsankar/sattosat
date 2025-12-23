@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type { SatellitePosition, ECIPosition } from '../../types/satellite';
 import { EARTH_RADIUS_KM } from '../../lib/orbit';
 import { classifyEarthRelation, computePhaseAngle, computeSunForTime } from '../../lib/relativeView';
-import { magnitude, normalize, subtract } from '../../lib/vectorMath';
+import { dot, magnitude, normalize, subtract } from '../../lib/vectorMath';
 
 interface RelativeViewPanelProps {
   positionA: SatellitePosition | null;
@@ -15,7 +15,14 @@ interface RelativeViewPanelProps {
 }
 
 // Include very narrow FoVs so a 10 m target at a few hundred km spans multiple pixels
-const FOV_PRESETS = [0.01, 0.05, 0.1, 0.5, 1, 5, 10, 20, 45];
+// Presets expressed in degrees, but labeled in arcminutes:
+// 0.5', 3', 20', 120'
+const FOV_PRESETS = [
+  0.5 / 60,   // 0.5 arcmin
+  3 / 60,     // 3 arcmin
+  20 / 60,    // 20 arcmin
+  120 / 60,   // 120 arcmin (2 degrees)
+];
 const TARGET_WIDTH_M = 30;
 const TARGET_HEIGHT_M = 4.1;
 const TARGET_FILL_FRACTION = 0.5; // target spans ~50% of panel width/height in autofit
@@ -24,6 +31,8 @@ const MIN_FOV_DEG = 0.001;
 export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPathB = [] }: RelativeViewPanelProps) {
   const [fov, setFov] = useState<number>(45);
   const [autoFit, setAutoFit] = useState<boolean>(true);
+  const [lockFov, setLockFov] = useState<boolean>(false);
+  const [lockedFov, setLockedFov] = useState<number | null>(null);
   const [showLos, setShowLos] = useState<boolean>(true);
   const [showSunLine, setShowSunLine] = useState<boolean>(true);
   const [showTrack, setShowTrack] = useState<boolean>(true);
@@ -36,6 +45,7 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
     const sunEci = computeSunForTime(currentTime);
     const phaseAngleDeg = computePhaseAngle(positionA.eci, positionB.eci, sunEci);
     const earthInfo = classifyEarthRelation(positionA.eci, positionB.eci);
+    const earthFromA = { x: -positionA.eci.x, y: -positionA.eci.y, z: -positionA.eci.z };
 
     // Scale so the largest object (Earth radius or range) is around unit size
     const scale = 1 / Math.max(rangeKm, EARTH_RADIUS_KM);
@@ -48,6 +58,7 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
       earthInfo,
       scale,
       velB: positionB.velocity,
+      earthFromA,
     };
   }, [currentTime, positionA, positionB]);
 
@@ -56,18 +67,27 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
     return orbitPathB.map(p => eciToThree(subtract(p, positionA.eci), derived.scale));
   }, [derived, orbitPathB, positionA]);
 
-  const trackParts = useMemo(() => {
-    if (relativeTrack.length === 0) return { past: [], future: [] };
+  // Use the forward-looking half of the sampled orbit to avoid doubled lines
+  const trackLinePoints = useMemo(() => {
+    if (relativeTrack.length === 0) return [];
     const mid = Math.floor(relativeTrack.length / 2);
-    return {
-      past: relativeTrack.slice(0, mid + 1),
-      future: relativeTrack.slice(mid),
-    };
+    const halfWindow = Math.floor(relativeTrack.length / 4); // show a symmetric segment around the current point
+    const start = Math.max(0, mid - halfWindow);
+    const end = Math.min(relativeTrack.length, mid + halfWindow + 1);
+    return relativeTrack.slice(start, end);
   }, [relativeTrack]);
 
-  const displayFov = derived ? pickFov(derived.rangeKm, autoFit, fov) : fov;
+  const autoFov = derived ? pickFov(derived.rangeKm, true, fov) : fov;
+  const displayFov =
+    lockFov && lockedFov !== null
+      ? lockedFov
+      : autoFit && derived
+        ? autoFov
+        : fov;
+
+  const fovRad = (displayFov * Math.PI) / 180;
   const displaySpanM = derived
-    ? 2 * derived.rangeKm * 1000 * Math.tan((displayFov * Math.PI / 180) / 2)
+    ? 2 * derived.rangeKm * 1000 * Math.tan(fovRad / 2)
     : null;
 
   const formatSpan = (meters: number | null) => {
@@ -76,21 +96,35 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
     return `${meters.toFixed(0)} m`;
   };
 
+  const earthVisible = useMemo(() => {
+    if (!derived) return false;
+    const viewDir = normalize(derived.rel);
+    const earthDir = normalize(derived.earthFromA);
+    const cosTheta = clamp(dot(viewDir, earthDir), -1, 1);
+    const angle = Math.acos(cosTheta);
+    const earthDistance = magnitude(derived.earthFromA);
+    if (earthDistance <= EARTH_RADIUS_KM) return true;
+    const earthAngular = Math.asin(Math.min(1, EARTH_RADIUS_KM / earthDistance));
+    return angle <= fovRad / 2 + earthAngular;
+  }, [derived, fovRad]);
+
   const fovButtons = (
-    <div className="flex gap-1 flex-wrap justify-end">
+    <div className="flex gap-1 flex-nowrap justify-end overflow-x-auto max-w-[14rem]">
       {FOV_PRESETS.map(val => (
         <button
           key={val}
           onClick={() => {
             setAutoFit(false);
+            setLockFov(false);
+            setLockedFov(null);
             setFov(val);
           }}
-          className={`px-2 py-1 rounded text-[11px] ${
+          className={`px-2 py-1 rounded text-[10px] ${
             !autoFit && fov === val ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
           }`}
-          title={`${val}° (${(val * 60).toFixed(1)} arcmin)`}
+          title={`${val}° (${(val * 60).toFixed(2)} arcmin)`}
         >
-          {val < 1 ? `${val}°` : `${val}°`}
+          {(val * 60).toFixed(1)}′
         </button>
       ))}
     </div>
@@ -99,24 +133,48 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
   return (
     <div className="bg-gray-800/95 border border-gray-700 rounded-lg p-3 shadow-xl text-sm text-gray-200">
       <div className="flex items-center justify-between mb-2">
-        <div>
+        <div className="flex-1 pr-4 min-w-0">
           <div className="text-white font-semibold">View from Satellite A</div>
-          <div className="text-gray-400 text-xs">
-            Satellite B rendered as 30×4.1 m panel facing Sun; cyan line = line of sight
-          </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-end gap-1 flex-shrink-0 w-[15rem]">
           <div className="text-[11px] text-gray-400">
-            FoV: {autoFit && derived ? `${displayFov.toFixed(4)}° (auto)` : `${displayFov}°`} / {(displayFov * 60).toFixed(1)}′
+            FoV: {(displayFov * 60).toFixed(1)}′{autoFit && derived ? ' (auto)' : ''}
           </div>
-          <label className="flex items-center gap-1 text-xs text-gray-300">
-            <input
-              type="checkbox"
-              checked={autoFit}
-              onChange={e => setAutoFit(e.target.checked)}
-            />
-            Auto-fit FoV
-          </label>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1 text-xs text-gray-300 whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={autoFit}
+                onChange={e => {
+                  const checked = e.target.checked;
+                  setAutoFit(checked);
+                  if (!checked) {
+                    setLockFov(false);
+                    setLockedFov(null);
+                  }
+                }}
+              />
+              Auto-fit FoV
+            </label>
+            <button
+              onClick={() => {
+                if (lockFov) {
+                  setLockFov(false);
+                  setLockedFov(null);
+                } else {
+                  setLockedFov(displayFov);
+                  setLockFov(true);
+                }
+              }}
+              disabled={!derived || !autoFit}
+              className={`px-2 py-1 text-[11px] rounded whitespace-nowrap ${
+                lockFov ? 'bg-blue-700 text-white' : 'bg-gray-800 text-gray-200 hover:bg-gray-700'
+              } disabled:opacity-40`}
+              title="Freeze the current auto-fit FoV while scrubbing time"
+            >
+              {lockFov ? 'Unlock FoV' : 'Lock FoV'}
+            </button>
+          </div>
           {fovButtons}
         </div>
       </div>
@@ -136,18 +194,21 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
                   fov={computedFov}
                   sunFromB={derived.sunFromB}
                   velB={derived.velB}
-                  trackPast={trackParts.past}
-                  trackFuture={trackParts.future}
+                  trackPoints={trackLinePoints}
                   showLos={showLos}
                   showSunLine={showSunLine}
                   showTrack={showTrack}
                   showVelocity={showVelocity}
+                  earthVisible={earthVisible}
                   earthPosition={{
                     x: -positionA!.eci.x,
                     y: -positionA!.eci.y,
                     z: -positionA!.eci.z,
                   }}
                 />
+                <div className="absolute top-1 left-2 text-[11px] text-gray-200 bg-black/60 px-2 py-0.5 rounded pointer-events-none">
+                  N ↑
+                </div>
                 <div className="absolute bottom-1 right-2 text-[11px] text-gray-200 bg-black/60 px-2 py-0.5 rounded pointer-events-none">
                   FoV {(computedFov * 60).toFixed(2)}′ / {formatSpan(displaySpanM)}
                 </div>
@@ -191,17 +252,6 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
                 {` (span ${formatSpan(displaySpanM)})`}
               </div>
             </div>
-            <div className="bg-gray-900/70 p-2 rounded col-span-2">
-              <div className="text-gray-400">Earth alignment</div>
-              <div className="text-white font-mono">
-                {derived.earthInfo.relation === 'obstructed'
-                  ? 'Obstructing line of sight'
-                  : derived.earthInfo.relation === 'background'
-                    ? 'In background of line of sight'
-                    : 'Clear of Earth disc'}
-                {` (closest ${derived.earthInfo.missDistance.toFixed(1)} km)`}
-              </div>
-            </div>
           </div>
         </>
       )}
@@ -226,12 +276,12 @@ function pickFov(rangeKm: number, autoFit: boolean, manualFov: number): number {
 interface RelativeViewCanvasProps {
   rel: { x: number; y: number; z: number };
   earthPosition: { x: number; y: number; z: number };
+  earthVisible: boolean;
   scale: number;
   sunEci: { x: number; y: number; z: number };
   sunFromB: { x: number; y: number; z: number };
   velB?: { x: number; y: number; z: number };
-  trackPast: [number, number, number][];
-  trackFuture: [number, number, number][];
+  trackPoints: [number, number, number][];
   showLos: boolean;
   showSunLine: boolean;
   showTrack: boolean;
@@ -242,12 +292,12 @@ interface RelativeViewCanvasProps {
 function RelativeViewCanvas({
   rel,
   earthPosition,
+  earthVisible,
   scale,
   sunEci,
   sunFromB,
   velB,
-  trackPast,
-  trackFuture,
+  trackPoints,
   showLos,
   showSunLine,
   showTrack,
@@ -315,14 +365,14 @@ function RelativeViewCanvas({
         panelRotation={panelRotation}
         panelSize={panelSize}
         sunDirThree={sunDirThree}
-        trackThree={[...trackPast, ...trackFuture]}
+        sunFromBDir={sunFromBDir}
         velocityDir={velocityDir}
         showLos={showLos}
         showSunLine={showSunLine}
         showTrack={showTrack}
         showVelocity={showVelocity}
-        trackPast={trackPast}
-        trackFuture={trackFuture}
+        trackPoints={trackPoints}
+        earthVisible={earthVisible}
       />
     </Canvas>
   );
@@ -336,14 +386,14 @@ interface RelativeSceneProps {
   panelRotation: THREE.Quaternion;
   panelSize: { width: number; height: number };
   sunDirThree: THREE.Vector3;
-  trackThree: [number, number, number][];
-  trackPast?: [number, number, number][];
-  trackFuture?: [number, number, number][];
+  sunFromBDir: THREE.Vector3;
+  trackPoints?: [number, number, number][];
   velocityDir: THREE.Vector3 | null;
   showLos: boolean;
   showSunLine: boolean;
   showTrack: boolean;
   showVelocity: boolean;
+  earthVisible: boolean;
 }
 
 function RelativeScene({
@@ -354,18 +404,31 @@ function RelativeScene({
   panelRotation,
   panelSize,
   sunDirThree,
-  trackPast = [],
-  trackFuture = [],
+  sunFromBDir,
+  trackPoints = [],
   velocityDir,
   showLos,
   showSunLine,
   showTrack,
   showVelocity,
+  earthVisible,
 }: RelativeSceneProps) {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   useFrame(() => {
     if (cameraRef.current) {
       const cam = cameraRef.current;
+      const viewVec = new THREE.Vector3(relThree[0], relThree[1], relThree[2]).normalize();
+      const north = new THREE.Vector3(0, 1, 0); // Earth +Z in Three coords
+      let up = north.clone().sub(viewVec.clone().multiplyScalar(north.dot(viewVec))); // project north onto view plane
+      if (up.lengthSq() < 1e-6) {
+        const east = new THREE.Vector3(1, 0, 0);
+        up = east.clone().sub(viewVec.clone().multiplyScalar(east.dot(viewVec)));
+      }
+      if (up.lengthSq() < 1e-6) {
+        up = new THREE.Vector3(0, 0, 1);
+      }
+      up.normalize();
+      cam.up.copy(up);
       cam.position.set(0, 0, 0.00001);
       cam.lookAt(relThree[0], relThree[1], relThree[2]);
       cam.updateProjectionMatrix();
@@ -383,24 +446,11 @@ function RelativeScene({
         color="#fff9ec"
       />
       <group>
-        {showTrack && trackPast.length > 1 && (
+        {showTrack && trackPoints.length > 1 && (
           <Line
-            points={trackPast}
+            points={trackPoints}
             color="#22c55e"
             lineWidth={2}
-            dashed
-            dashSize={0.2}
-            gapSize={0.1}
-            renderOrder={0}
-            depthTest={false}
-            depthWrite={false}
-          />
-        )}
-        {showTrack && trackFuture.length > 1 && (
-          <Line
-            points={trackFuture}
-            color="#22c55e"
-            lineWidth={2.5}
             renderOrder={0}
             depthTest={false}
             depthWrite={false}
@@ -420,7 +470,7 @@ function RelativeScene({
           <Line
             points={[
               [relThree[0], relThree[1], relThree[2]],
-              [relThree[0] + sunDirThree.x * 2, relThree[1] + sunDirThree.y * 2, relThree[2] + sunDirThree.z * 2],
+              [relThree[0] + sunFromBDir.x * 2, relThree[1] + sunFromBDir.y * 2, relThree[2] + sunFromBDir.z * 2],
             ]}
             color="#facc15"
             lineWidth={1}
@@ -451,10 +501,12 @@ function RelativeScene({
         </Html>
 
         {/* Earth sphere if within view volume */}
-        <mesh position={earthThree} renderOrder={3}>
-          <sphereGeometry args={[earthRadiusScaled, 32, 32]} />
-          <meshStandardMaterial color="#1e3a8a" transparent opacity={0.35} />
-        </mesh>
+        {earthVisible && (
+          <mesh position={earthThree} renderOrder={3}>
+            <sphereGeometry args={[earthRadiusScaled, 32, 32]} />
+            <meshStandardMaterial color="#1e3a8a" transparent opacity={0.35} />
+          </mesh>
+        )}
 
         {/* Sightline (LoS) */}
         {showLos && (
@@ -493,29 +545,6 @@ function RelativeScene({
             </mesh>
           </>
         )}
-        {showTrack && trackPast.length > 1 && (
-          <Line
-            points={trackPast}
-            color="#22c55e"
-            lineWidth={2}
-            dashed
-            dashSize={0.2}
-            gapSize={0.1}
-            renderOrder={0}
-            depthTest={false}
-            depthWrite={false}
-          />
-        )}
-        {showTrack && trackFuture.length > 1 && (
-          <Line
-            points={trackFuture}
-            color="#22c55e"
-            lineWidth={2.5}
-            renderOrder={0}
-            depthTest={false}
-            depthWrite={false}
-          />
-        )}
       </group>
     </>
   );
@@ -523,4 +552,8 @@ function RelativeScene({
 
 function eciToThree(vec: { x: number; y: number; z: number }, scale: number): [number, number, number] {
   return [vec.x * scale, vec.z * scale, -vec.y * scale];
+}
+
+function clamp(val: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, val));
 }

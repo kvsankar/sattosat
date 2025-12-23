@@ -36,6 +36,7 @@ export function TimelineSlider({
 
   const handleSliderChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      setIsPlaying(false);
       const percent = parseFloat(e.target.value);
       const newTime = new Date(minTime + (percent / 100) * totalRange);
       onTimeChange(newTime);
@@ -44,6 +45,7 @@ export function TimelineSlider({
   );
 
   const handleReset = useCallback(() => {
+    setIsPlaying(false);
     if (onNow) {
       onNow();
     } else {
@@ -52,9 +54,23 @@ export function TimelineSlider({
   }, [onNow, onTimeChange]);
 
   const handleStep = useCallback((minutes: number) => {
+    setIsPlaying(false);
     const next = new Date(currentTime.getTime() + minutes * 60 * 1000);
     onTimeChange(next);
   }, [currentTime, onTimeChange]);
+
+  const handleStepSeconds = useCallback((seconds: number) => {
+    setIsPlaying(false);
+    const next = new Date(currentTime.getTime() + seconds * 1000);
+    onTimeChange(next);
+  }, [currentTime, onTimeChange]);
+
+  const handleAnchorClick = useCallback(() => {
+    setIsPlaying(false);
+    if (onAnchor) {
+      onAnchor();
+    }
+  }, [onAnchor]);
 
   const togglePlay = useCallback(() => {
     setIsPlaying((p) => !p);
@@ -111,7 +127,7 @@ export function TimelineSlider({
         <div className="flex items-center gap-2">
           {onAnchor && (
             <button
-              onClick={onAnchor}
+              onClick={handleAnchorClick}
               className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white"
             >
               Anchor
@@ -195,6 +211,18 @@ export function TimelineSlider({
           className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
         >
           -1m
+        </button>
+        <button
+          onClick={() => handleStepSeconds(-10)}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+        >
+          -10s
+        </button>
+        <button
+          onClick={() => handleStepSeconds(10)}
+          className="flex-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded"
+        >
+          +10s
         </button>
         <button
           onClick={() => handleStep(1)}
