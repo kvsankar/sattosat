@@ -24,7 +24,11 @@ const FOV_PRESETS = [
   20 / 60,    // 20 arcmin
   120 / 60,   // 120 arcmin (2 degrees)
 ];
-const TARGET_WIDTH_M = 30;
+// Target rendered as three rectangular segments with gaps:
+// 12.8m + 0.5m gap + 2.7m + 0.5m gap + 12.8m
+const TARGET_SEGMENTS_M = [12.8, 2.7, 12.8];
+const TARGET_GAP_M = 0.5;
+const TARGET_TOTAL_WIDTH_M = TARGET_SEGMENTS_M.reduce((a, b) => a + b, 0) + TARGET_GAP_M * 2; // 12.8 + 0.5 + 2.7 + 0.5 + 12.8
 const TARGET_HEIGHT_M = 4.1;
 const TARGET_FILL_FRACTION = 0.5; // target spans ~50% of panel width/height in autofit
 const MIN_FOV_DEG = 0.001;
@@ -248,7 +252,7 @@ function pickFov(rangeKm: number, autoFit: boolean, manualFov: number): number {
   if (!autoFit) return manualFov;
   if (rangeKm <= 0) return manualFov;
   const rangeM = rangeKm * 1000;
-  const sizeWidthM = TARGET_WIDTH_M;
+  const sizeWidthM = TARGET_TOTAL_WIDTH_M;
   const sizeHeightM = TARGET_HEIGHT_M;
   const angularWidth = 2 * Math.atan(sizeWidthM / (2 * rangeM));
   const angularHeight = 2 * Math.atan(sizeHeightM / (2 * rangeM));
@@ -305,7 +309,7 @@ function RelativeViewCanvas({
   }, [sunFromB]);
 
   const panelSize = useMemo(() => {
-    const width = (TARGET_WIDTH_M / 1000) * scale;
+    const width = (TARGET_TOTAL_WIDTH_M / 1000) * scale;
     const height = (TARGET_HEIGHT_M / 1000) * scale;
     return { width, height };
   }, [scale]);
@@ -441,15 +445,38 @@ function RelativeScene({
             depthWrite={false}
           />
         )}
-        <mesh position={relThree} rotation={new THREE.Euler().setFromQuaternion(panelRotation)} renderOrder={5}>
-          <planeGeometry args={[panelSize.width, panelSize.height]} />
-          <meshStandardMaterial
-            color="#ef4444"
-            emissive="#ff7f7f"
-            emissiveIntensity={0.3}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
+        {/* Satellite body as 3 rectangular segments with gaps */}
+        {TARGET_SEGMENTS_M.map((segment, idx) => {
+          const leftOffsetM =
+            -TARGET_TOTAL_WIDTH_M / 2 +
+            TARGET_SEGMENTS_M.slice(0, idx).reduce((a, b) => a + b, 0) +
+            (idx > 0 ? idx * TARGET_GAP_M : 0) +
+            segment / 2;
+          const offsetThree = eciToThree(
+            { x: leftOffsetM / 1000, y: 0, z: 0 },
+            scale
+          );
+          return (
+            <mesh
+              key={idx}
+              position={[
+                relThree[0] + offsetThree[0],
+                relThree[1] + offsetThree[1],
+                relThree[2] + offsetThree[2],
+              ]}
+              rotation={new THREE.Euler().setFromQuaternion(panelRotation)}
+              renderOrder={5}
+            >
+              <planeGeometry args={[ (segment / 1000) * scale, panelSize.height ]} />
+              <meshStandardMaterial
+                color="#ef4444"
+                emissive="#ff7f7f"
+                emissiveIntensity={0.3}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+          );
+        })}
         {/* Sun direction indicator (thin dashed yellow) */}
         {showSunLine && (
           <Line
@@ -482,7 +509,7 @@ function RelativeScene({
             whiteSpace: 'nowrap',
           }}
         >
-          30m × 4.1m
+          12.8m + 2.7m + 12.8m (gaps 0.5m)
         </Html>
 
         {/* Earth sphere if within view volume */}
