@@ -158,12 +158,17 @@ export function calculatePosition(satrec: satellite.SatRec, time: Date): Satelli
 }
 
 // Generate orbit path points for visualization
-export function generateOrbitPath(
+export interface OrbitSample {
+  time: Date;
+  eci: ECIPosition;
+}
+
+export function generateOrbitSamples(
   satrec: satellite.SatRec,
   time: Date,
   points: number = 360
-): ECIPosition[] {
-  const path: ECIPosition[] = [];
+): OrbitSample[] {
+  const samples: OrbitSample[] = [];
 
   // Get the orbital period from mean motion
   // This is approximate but good enough for visualization
@@ -179,11 +184,19 @@ export function generateOrbitPath(
 
     const position = calculatePosition(satrec, pointTime);
     if (position) {
-      path.push(position.eci);
+      samples.push({ time: pointTime, eci: position.eci });
     }
   }
 
-  return path;
+  return samples;
+}
+
+export function generateOrbitPath(
+  satrec: satellite.SatRec,
+  time: Date,
+  points: number = 360
+): ECIPosition[] {
+  return generateOrbitSamples(satrec, time, points).map(sample => sample.eci);
 }
 
 // Calculate distance between two ECI positions in km

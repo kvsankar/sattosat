@@ -107,7 +107,7 @@ interface ConjunctionItemProps {
 
 function ConjunctionItem({ conjunction, onJump, isCurrent }: ConjunctionItemProps) {
   const formatTime = (date: Date) => {
-    return date.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+    return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
   };
 
   const formatRelative = (date: Date) => {

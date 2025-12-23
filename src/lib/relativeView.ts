@@ -1,5 +1,6 @@
 import type { ECIPosition } from '../types/satellite';
-import { EARTH_RADIUS_KM } from './orbit';
+import type { SatRec } from 'satellite.js';
+import { EARTH_RADIUS_KM, calculatePosition, generateOrbitSamples } from './orbit';
 import { angleBetweenDeg, closestApproachToOriginAlongSegment, subtract } from './vectorMath';
 import { calculateSunPosition } from './sun';
 
@@ -36,4 +37,22 @@ export function computePhaseAngle(
 
 export function computeSunForTime(time: Date): ECIPosition {
   return calculateSunPosition(time);
+}
+
+export function generateRelativeOrbitTrack(
+  satrecA: SatRec,
+  satrecB: SatRec,
+  time: Date,
+  points: number = 360
+): ECIPosition[] {
+  const samplesB = generateOrbitSamples(satrecB, time, points);
+  const track: ECIPosition[] = [];
+
+  for (const sample of samplesB) {
+    const positionA = calculatePosition(satrecA, sample.time);
+    if (!positionA) continue;
+    track.push(subtract(sample.eci, positionA.eci));
+  }
+
+  return track;
 }

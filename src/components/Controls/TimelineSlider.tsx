@@ -109,8 +109,16 @@ export function TimelineSlider({
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
     if (Math.abs(diffHours) < 1) {
-      const diffMins = Math.round(diffMs / (1000 * 60));
-      return diffMins >= 0 ? `+${diffMins}m` : `${diffMins}m`;
+      const absMs = Math.abs(diffMs);
+      if (absMs < 1000) return '0s';
+      const sign = diffMs >= 0 ? '+' : '-';
+      const mins = Math.floor(absMs / (1000 * 60));
+      const secs = Math.floor((absMs % (1000 * 60)) / 1000);
+      const secStr = secs.toString().padStart(2, '0');
+      if (mins > 0) {
+        return `${sign}${mins}m ${secStr}s`;
+      }
+      return `${sign}${secStr}s`;
     } else if (Math.abs(diffDays) < 1) {
       const hours = Math.round(diffHours);
       return hours >= 0 ? `+${hours}h` : `${hours}h`;

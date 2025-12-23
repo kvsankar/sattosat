@@ -52,7 +52,6 @@ export default function App() {
   const [showAntiSolar, setShowAntiSolar] = useState(true);
   const [showMainLos, setShowMainLos] = useState(true);
   const [showMainSunLine, setShowMainSunLine] = useState(true);
-  const [hasAutoJumped, setHasAutoJumped] = useState(true); // start true to avoid unsolicited auto-jumps
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [relativeCollapsed, setRelativeCollapsed] = useState(false);
   const [viewToggleCollapsed, setViewToggleCollapsed] = useState(false);
@@ -155,13 +154,11 @@ export default function App() {
 
   const handleJumpToTime = useCallback((time: Date) => {
     setAutoNow(false);
-    setHasAutoJumped(true);
     setCurrentTime(time);
   }, []);
 
   const handleTimeChange = useCallback((time: Date) => {
     setAutoNow(false);
-    setHasAutoJumped(true);
     setCurrentTime(time);
   }, []);
 
@@ -169,7 +166,6 @@ export default function App() {
     setAutoNow(false);
     const diffMs = Math.abs(currentTime.getTime() - anchorTime.getTime());
     if (diffMs < 1) return; // Already at anchor, avoid state churn
-    setHasAutoJumped(true);
     setCurrentTime(new Date(anchorTime));
   }, [anchorTime, currentTime]);
 
@@ -179,7 +175,6 @@ export default function App() {
     setAnchorTime(now);
     setCurrentTime(now);
     setAutoNow(false);
-    setHasAutoJumped(true);
   }, [selectedProfileName]);
 
   const handlePasteTlesA = useCallback(async (text: string, opts?: { forceNorad?: boolean }): Promise<number> => {
@@ -220,7 +215,6 @@ export default function App() {
     setSelectedIdB(satB);
     setPreferredEpochA(null);
     setPreferredEpochB(null);
-    setHasAutoJumped(true);
   }, [setSelectedIdA, setSelectedIdB]);
 
   // Auto-load the first profile on startup if available
@@ -448,8 +442,9 @@ export default function App() {
               <RelativeViewPanel
                 positionA={positionA}
                 positionB={positionB}
+                tleA={activeTleA}
+                tleB={activeTleB}
                 currentTime={currentTime}
-                orbitPathB={orbitPathB}
               />
             </div>
           )}

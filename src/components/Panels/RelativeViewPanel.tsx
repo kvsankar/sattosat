@@ -2,16 +2,17 @@ import { useMemo, useState, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { PerspectiveCamera, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import type { SatellitePosition, ECIPosition } from '../../types/satellite';
-import { EARTH_RADIUS_KM } from '../../lib/orbit';
-import { classifyEarthRelation, computePhaseAngle, computeSunForTime } from '../../lib/relativeView';
+import type { SatellitePosition, SatelliteTLE } from '../../types/satellite';
+import { EARTH_RADIUS_KM, createSatrec } from '../../lib/orbit';
+import { classifyEarthRelation, computePhaseAngle, computeSunForTime, generateRelativeOrbitTrack } from '../../lib/relativeView';
 import { dot, magnitude, normalize, subtract } from '../../lib/vectorMath';
 
 interface RelativeViewPanelProps {
   positionA: SatellitePosition | null;
   positionB: SatellitePosition | null;
+  tleA: SatelliteTLE | null;
+  tleB: SatelliteTLE | null;
   currentTime: Date;
-  orbitPathB?: ECIPosition[];
 }
 
 // Include very narrow FoVs so a 10 m target at a few hundred km spans multiple pixels
@@ -28,7 +29,7 @@ const TARGET_HEIGHT_M = 4.1;
 const TARGET_FILL_FRACTION = 0.5; // target spans ~50% of panel width/height in autofit
 const MIN_FOV_DEG = 0.001;
 
-export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPathB = [] }: RelativeViewPanelProps) {
+export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTime }: RelativeViewPanelProps) {
   const [fov, setFov] = useState<number>(45);
   const [autoFit, setAutoFit] = useState<boolean>(true);
   const [lockFov, setLockFov] = useState<boolean>(false);
@@ -37,6 +38,16 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
   const [showSunLine, setShowSunLine] = useState<boolean>(true);
   const [showTrack, setShowTrack] = useState<boolean>(true);
   const [showVelocity, setShowVelocity] = useState<boolean>(true);
+
+  const satrecA = useMemo(() => {
+    if (!tleA) return null;
+    return createSatrec({ line1: tleA.line1, line2: tleA.line2 });
+  }, [tleA?.line1, tleA?.line2]);
+
+  const satrecB = useMemo(() => {
+    if (!tleB) return null;
+    return createSatrec({ line1: tleB.line1, line2: tleB.line2 });
+  }, [tleB?.line1, tleB?.line2]);
 
   const derived = useMemo(() => {
     if (!positionA || !positionB) return null;
@@ -57,15 +68,20 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
       phaseAngleDeg,
       earthInfo,
       scale,
-      velB: positionB.velocity,
+      velB: subtract(positionB.velocity, positionA.velocity),
       earthFromA,
     };
   }, [currentTime, positionA, positionB]);
 
+  const relativeTrackEci = useMemo(() => {
+    if (!satrecA || !satrecB) return [];
+    return generateRelativeOrbitTrack(satrecA, satrecB, currentTime);
+  }, [currentTime, satrecA, satrecB]);
+
   const relativeTrack = useMemo(() => {
-    if (!derived || !positionA || orbitPathB.length === 0) return [];
-    return orbitPathB.map(p => eciToThree(subtract(p, positionA.eci), derived.scale));
-  }, [derived, orbitPathB, positionA]);
+    if (!derived || relativeTrackEci.length === 0) return [];
+    return relativeTrackEci.map(p => eciToThree(p, derived.scale));
+  }, [derived, relativeTrackEci]);
 
   // Use the forward-looking half of the sampled orbit to avoid doubled lines
   const trackLinePoints = useMemo(() => {
