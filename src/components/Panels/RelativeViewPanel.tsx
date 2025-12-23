@@ -2,7 +2,7 @@ import { useMemo, useState, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { PerspectiveCamera, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import type { SatellitePosition } from '../../types/satellite';
+import type { SatellitePosition, ECIPosition } from '../../types/satellite';
 import { EARTH_RADIUS_KM } from '../../lib/orbit';
 import { classifyEarthRelation, computePhaseAngle, computeSunForTime } from '../../lib/relativeView';
 import { magnitude, normalize, subtract } from '../../lib/vectorMath';
@@ -11,6 +11,7 @@ interface RelativeViewPanelProps {
   positionA: SatellitePosition | null;
   positionB: SatellitePosition | null;
   currentTime: Date;
+  orbitPathB?: ECIPosition[];
 }
 
 // Include very narrow FoVs so a 10 m target at a few hundred km spans multiple pixels
@@ -20,7 +21,7 @@ const TARGET_HEIGHT_M = 4.1;
 const TARGET_FILL_FRACTION = 0.5; // target spans ~50% of panel width/height in autofit
 const MIN_FOV_DEG = 0.001;
 
-export function RelativeViewPanel({ positionA, positionB, currentTime }: RelativeViewPanelProps) {
+export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPathB = [] }: RelativeViewPanelProps) {
   const [fov, setFov] = useState<number>(45);
   const [autoFit, setAutoFit] = useState<boolean>(true);
 
@@ -45,6 +46,11 @@ export function RelativeViewPanel({ positionA, positionB, currentTime }: Relativ
       velB: positionB.velocity,
     };
   }, [currentTime, positionA, positionB]);
+
+  const relativeTrack = useMemo(() => {
+    if (!derived || !positionA || orbitPathB.length === 0) return [];
+    return orbitPathB.map(p => eciToThree(subtract(p, positionA.eci), derived.scale));
+  }, [derived, orbitPathB, positionA]);
 
   const displayFov = derived ? pickFov(derived.rangeKm, autoFit, fov) : fov;
   const displaySpanM = derived
@@ -117,6 +123,7 @@ export function RelativeViewPanel({ positionA, positionB, currentTime }: Relativ
                   fov={computedFov}
                   sunFromB={derived.sunFromB}
                   velB={derived.velB}
+                  track={relativeTrack}
                   earthPosition={{
                     x: -positionA!.eci.x,
                     y: -positionA!.eci.y,
@@ -184,10 +191,11 @@ interface RelativeViewCanvasProps {
   sunEci: { x: number; y: number; z: number };
   sunFromB: { x: number; y: number; z: number };
   velB?: { x: number; y: number; z: number };
+  track: [number, number, number][];
   fov: number;
 }
 
-function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, velB, fov }: RelativeViewCanvasProps) {
+function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, velB, track, fov }: RelativeViewCanvasProps) {
   const relThree = useMemo(() => eciToThree(rel, scale), [rel, scale]);
   const earthThree = useMemo(() => eciToThree(earthPosition, scale), [earthPosition, scale]);
   const sunDirThree = useMemo(() => {
@@ -249,6 +257,7 @@ function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, velB,
         panelRotation={panelRotation}
         panelSize={panelSize}
         sunDirThree={sunDirThree}
+        trackThree={track}
       />
     </Canvas>
   );
@@ -262,6 +271,7 @@ interface RelativeSceneProps {
   panelRotation: THREE.Quaternion;
   panelSize: { width: number; height: number };
   sunDirThree: THREE.Vector3;
+  trackThree: [number, number, number][];
 }
 
 function RelativeScene({
@@ -272,6 +282,7 @@ function RelativeScene({
   panelRotation,
   panelSize,
   sunDirThree,
+  trackThree,
 }: RelativeSceneProps) {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   useFrame(() => {
@@ -303,6 +314,13 @@ function RelativeScene({
             side={THREE.DoubleSide}
           />
         </mesh>
+        {trackThree.length > 1 && (
+          <Line
+            points={trackThree}
+            color="#22c55e"
+            lineWidth={2}
+          />
+        )}
         <Html
           position={[
             relThree[0] + panelSize.width * 0.8,
