@@ -30,10 +30,6 @@ function formatCacheAge(timestamp: number): string {
   return `${Math.floor(ageHours / 24)}d ago`;
 }
 
-function formatFriendlyEpoch(epoch: Date): string {
-  return `${epoch.toISOString().slice(0, 19).replace('T', ' ')} UTC`;
-}
-
 export function SatelliteSelector({
   label,
   color,
@@ -137,17 +133,22 @@ export function SatelliteSelector({
               const val = e.target.value === 'auto' ? null : e.target.value;
               onSelectTleEpoch(val);
             }}
-            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs whitespace-pre-line"
           >
             <option value="auto">Auto (nearest to timeline)</option>
             {availableTles
               .slice()
               .sort((a, b) => b.epoch.getTime() - a.epoch.getTime())
-              .map((t, idx) => (
-                <option key={idx} value={t.epoch.toISOString()}>
-                  {formatFriendlyEpoch(t.epoch).replace(' ', '\n')} ({formatCacheAge(t.cacheTimestamp)})
-                </option>
-              ))}
+              .map((t, idx) => {
+                const iso = t.epoch.toISOString();
+                const date = iso.slice(0, 10);
+                const time = iso.slice(11, 19) + ' UTC';
+                return (
+                  <option key={idx} value={t.epoch.toISOString()} className="whitespace-pre-line">
+                    {`${date}\n${time}`} ({formatCacheAge(t.cacheTimestamp)})
+                  </option>
+                );
+              })}
           </select>
         </div>
       )}
