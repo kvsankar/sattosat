@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { PerspectiveCamera, Line, Html, OrbitControls } from '@react-three/drei';
+import { PerspectiveCamera, Line, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { SatellitePosition, ECIPosition } from '../../types/satellite';
 import { EARTH_RADIUS_KM } from '../../lib/orbit';
@@ -24,7 +24,6 @@ const MIN_FOV_DEG = 0.001;
 export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPathB = [] }: RelativeViewPanelProps) {
   const [fov, setFov] = useState<number>(45);
   const [autoFit, setAutoFit] = useState<boolean>(true);
-  const [lockView, setLockView] = useState<boolean>(true);
   const [showLos, setShowLos] = useState<boolean>(true);
   const [showSunLine, setShowSunLine] = useState<boolean>(true);
   const [showTrack, setShowTrack] = useState<boolean>(true);
@@ -143,7 +142,6 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
                   showSunLine={showSunLine}
                   showTrack={showTrack}
                   showVelocity={showVelocity}
-                  lockView={lockView}
                   earthPosition={{
                     x: -positionA!.eci.x,
                     y: -positionA!.eci.y,
@@ -153,13 +151,6 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
                 <div className="absolute bottom-1 right-2 text-[11px] text-gray-200 bg-black/60 px-2 py-0.5 rounded pointer-events-none">
                   FoV {(computedFov * 60).toFixed(2)}′ / {formatSpan(displaySpanM)}
                 </div>
-                <button
-                  className="absolute top-2 right-2 text-sm bg-black/70 text-gray-200 px-2 py-1 rounded"
-                  onClick={() => setLockView(!lockView)}
-                  title={lockView ? 'Unlock view controls' : 'Lock view controls'}
-                >
-                  {lockView ? '🔒' : '🔓'}
-                </button>
               </div>
             );
           })()}
@@ -245,7 +236,6 @@ interface RelativeViewCanvasProps {
   showSunLine: boolean;
   showTrack: boolean;
   showVelocity: boolean;
-  lockView: boolean;
   fov: number;
 }
 
@@ -262,7 +252,6 @@ function RelativeViewCanvas({
   showSunLine,
   showTrack,
   showVelocity,
-  lockView,
   fov
 }: RelativeViewCanvasProps) {
   const relThree = useMemo(() => eciToThree(rel, scale), [rel, scale]);
@@ -318,7 +307,6 @@ function RelativeViewCanvas({
 
   return (
     <Canvas>
-      {!lockView && <OrbitControls makeDefault enablePan enableZoom enableRotate />}
       <RelativeScene
         fov={fov}
         relThree={relThree}
@@ -333,7 +321,6 @@ function RelativeViewCanvas({
         showSunLine={showSunLine}
         showTrack={showTrack}
         showVelocity={showVelocity}
-        lockView={lockView}
         trackPast={trackPast}
         trackFuture={trackFuture}
       />
@@ -357,7 +344,6 @@ interface RelativeSceneProps {
   showSunLine: boolean;
   showTrack: boolean;
   showVelocity: boolean;
-  lockView: boolean;
 }
 
 function RelativeScene({
@@ -375,11 +361,10 @@ function RelativeScene({
   showSunLine,
   showTrack,
   showVelocity,
-  lockView,
 }: RelativeSceneProps) {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   useFrame(() => {
-    if (lockView && cameraRef.current) {
+    if (cameraRef.current) {
       const cam = cameraRef.current;
       cam.position.set(0, 0, 0.00001);
       cam.lookAt(relThree[0], relThree[1], relThree[2]);
