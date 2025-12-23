@@ -11,7 +11,7 @@ import { addManualTLEs } from './lib/celestrak';
 import { useSatellitePosition } from './hooks/useSatellitePosition';
 import { useConjunctions } from './hooks/useConjunctions';
 import type { SatelliteCatalogEntry, SatelliteTLE } from './types/satellite';
-import { profiles } from './lib/profiles';
+import { profiles, applyProfileTles } from './lib/profiles';
 
 type SortMode = 'date' | 'distance';
 const SEARCH_RANGE_DAYS = 3;
@@ -185,12 +185,16 @@ export default function App() {
       setSelectedIdB(null);
       return;
     }
-    const refTime = new Date(profile.now);
+    // Seed embedded/pasted TLEs from profile
+    applyProfileTles(profile);
+    const refTime = new Date(profile.anchor);
     setAnchorTime(refTime);
     setCurrentTime(refTime);
     setAutoNow(false);
-    setSelectedIdA(profile.satA);
-    setSelectedIdB(profile.satB);
+    const satA = profile.satellites[0]?.noradId ?? null;
+    const satB = profile.satellites[1]?.noradId ?? null;
+    setSelectedIdA(satA);
+    setSelectedIdB(satB);
     setPreferredEpochA(null);
     setPreferredEpochB(null);
   }, [setSelectedIdA, setSelectedIdB]);

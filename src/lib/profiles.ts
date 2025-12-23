@@ -1,17 +1,25 @@
+import profilesData from './profiles.json';
+import { addManualTLEs } from './celestrak';
+
+export interface ProfileSatellite {
+  noradId: number;
+  role: string;
+  tles: string[];
+}
+
 export interface Profile {
   name: string;
   description?: string;
-  now: string; // ISO timestamp
-  satA: number;
-  satB: number;
+  anchor: string; // ISO
+  satellites: ProfileSatellite[];
 }
 
-export const profiles: Profile[] = [
-  {
-    name: 'WV3-STARLINK35956-Picture',
-    description: 'WorldView-3 vs Starlink close-imaging setup',
-    now: '2025-12-19T01:30:00Z',
-    satA: 40115, // WorldView-3
-    satB: 66620, // Placeholder for Starlink-35956 (embedded TLE set)
-  },
-];
+export const profiles: Profile[] = profilesData as Profile[];
+
+export function applyProfileTles(profile: Profile): void {
+  for (const sat of profile.satellites) {
+    for (const tleText of sat.tles) {
+      addManualTLEs(sat.noradId, tleText, { forceNorad: true });
+    }
+  }
+}
