@@ -406,23 +406,6 @@ function RelativeScene({
             gapSize={0.1}
           />
         )}
-        {showTrack && trackPast.length > 1 && (
-          <Line
-            points={trackPast}
-            color="#22c55e"
-            lineWidth={2}
-            dashed
-            dashSize={0.2}
-            gapSize={0.1}
-          />
-        )}
-        {showTrack && trackFuture.length > 1 && (
-          <Line
-            points={trackFuture}
-            color="#22c55e"
-            lineWidth={2.5}
-          />
-        )}
         <Html
           position={[
             relThree[0] + panelSize.width * 0.8,
@@ -482,6 +465,23 @@ function RelativeScene({
               <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={0.4} />
             </mesh>
           </>
+        )}
+        {showTrack && trackPast.length > 1 && (
+          <Line
+            points={trackPast}
+            color="#22c55e"
+            lineWidth={2}
+            dashed
+            dashSize={0.2}
+            gapSize={0.1}
+          />
+        )}
+        {showTrack && trackFuture.length > 1 && (
+          <Line
+            points={trackFuture}
+            color="#22c55e"
+            lineWidth={2.5}
+          />
         )}
       </group>
     </>
