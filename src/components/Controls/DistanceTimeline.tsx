@@ -138,7 +138,7 @@ export function DistanceTimeline({
       )}
       {!stats ? (
         <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-          Load two satellites to see the distance timeline.
+          Select a profile or choose a couple of satellites to view the distance timeline.
         </div>
       ) : (
         <>

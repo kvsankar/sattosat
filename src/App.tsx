@@ -127,7 +127,13 @@ export default function App() {
   const { position: positionA, orbitPath: orbitPathA } = useSatellitePosition(activeTleA, currentTime);
   const { position: positionB, orbitPath: orbitPathB } = useSatellitePosition(activeTleB, currentTime);
   const profileActive = !!selectedProfileName;
-  const selectionReady = profileActive && !!activeTleA && !!activeTleB && !!positionA && !!positionB;
+  const hasSatellites = !!activeTleA && !!activeTleB && !!positionA && !!positionB;
+  useEffect(() => {
+    if (!hasSatellites) {
+      setShowMainLos(false);
+      setShowMainSunLine(false);
+    }
+  }, [hasSatellites]);
 
   // Find conjunctions
   const {
@@ -138,7 +144,6 @@ export default function App() {
   } = useConjunctions(tleA, tleB, allTlesA, allTlesB, currentTime, SEARCH_RANGE_DAYS, anchorTime);
 
   const distanceSamples = useMemo(() => {
-    if (!selectedProfileName) return [];
     const tlesAForCurve = allTlesA.length ? allTlesA : (tleA ? [tleA] : []);
     const tlesBForCurve = allTlesB.length ? allTlesB : (tleB ? [tleB] : []);
     if (tlesAForCurve.length === 0 || tlesBForCurve.length === 0) return [];
@@ -224,7 +229,7 @@ export default function App() {
       const now = new Date();
       setAnchorTime(now);
       setCurrentTime(now);
-      setAutoNow(false);
+      setAutoNow(true);
       setSelectedIdA(null);
       setSelectedIdB(null);
       setPreferredEpochA(null);
@@ -254,6 +259,15 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profiles.length]);
+
+  // When no profile is active, keep time advancing at real-time 1x
+  useEffect(() => {
+    if (!selectedProfileName) {
+      setAutoNow(true);
+      setCurrentTime(new Date());
+      setAnchorTime(new Date());
+    }
+  }, [selectedProfileName]);
 
   // Keep time synced to real clock when in auto-now mode
   useEffect(() => {
@@ -345,7 +359,7 @@ export default function App() {
             selectedId={selectedIdA}
             onSelect={handleSelectA}
             loading={catalogLoading || loadingA}
-            disabled={catalogLoading || !profileActive}
+            disabled={catalogLoading}
             cacheInfo={cacheInfoA}
             onRefresh={refreshTleA}
             availableTles={availableTlesA}
@@ -362,7 +376,7 @@ export default function App() {
             selectedId={selectedIdB}
             onSelect={handleSelectB}
             loading={catalogLoading || loadingB}
-            disabled={catalogLoading || !profileActive}
+            disabled={catalogLoading}
             cacheInfo={cacheInfoB}
             onRefresh={refreshTleB}
             availableTles={availableTlesB}
@@ -383,7 +397,7 @@ export default function App() {
             rangeDays={SEARCH_RANGE_DAYS}
             anchorTime={anchorTime}
             showNow={true}
-            disabled={!selectionReady}
+            disabled={false}
           />
         </div>
 
@@ -430,38 +444,32 @@ export default function App() {
             bottom: (!timelineCollapsed || !viewToggleCollapsed) ? TIMELINE_HEIGHT + 24 : 0
           }}
         >
-          {selectionReady ? (
-            <Scene
-              satelliteA={
-                activeTleA
-                  ? {
-                      name: activeTleA.name,
-                      position: positionA,
-                      orbitPath: orbitPathA,
-                    }
-                  : null
-              }
-              satelliteB={
-                activeTleB
-                  ? {
-                      name: activeTleB.name,
-                      position: positionB,
-                      orbitPath: orbitPathB,
-                    }
-                  : null
-              }
-              currentTime={currentTime}
-              showGrid={showGrid}
-              showTerminator={showTerminator}
-              showAntiSolar={showAntiSolar}
-              showMainLos={showMainLos}
-              showMainSunLine={showMainSunLine}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
-              {profileActive ? 'Select both satellites to start visualization.' : 'Select a profile to start.'}
-            </div>
-          )}
+          <Scene
+            satelliteA={
+              hasSatellites && activeTleA
+                ? {
+                    name: activeTleA.name,
+                    position: positionA,
+                    orbitPath: orbitPathA,
+                  }
+                : null
+            }
+            satelliteB={
+              hasSatellites && activeTleB
+                ? {
+                    name: activeTleB.name,
+                    position: positionB,
+                    orbitPath: orbitPathB,
+                  }
+                : null
+            }
+            currentTime={currentTime}
+            showGrid={showGrid}
+            showTerminator={showTerminator}
+            showAntiSolar={showAntiSolar}
+            showMainLos={hasSatellites && showMainLos}
+            showMainSunLine={hasSatellites && showMainSunLine}
+          />
         </div>
 
         {/* Relative view panel (collapsible) */}
@@ -502,34 +510,26 @@ export default function App() {
             height: timelineCollapsed ? undefined : TIMELINE_HEIGHT
           }}
         >
-          {timelineCollapsed ? (
-            <button
-              onClick={() => setTimelineCollapsed(false)}
-              className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
-            >
-              Show timeline
-            </button>
-          ) : (
-            <>
-              {profileActive ? (
-                <DistanceTimeline
-                  samples={distanceSamples}
-                  currentTime={currentTime}
-                  anchorTime={anchorTime}
-                  rangeDays={SEARCH_RANGE_DAYS}
-                  onTimeChange={handleTimeChange}
-                  height={TIMELINE_HEIGHT}
-                  currentDistanceKm={currentDistance ?? undefined}
-                  onCollapse={() => setTimelineCollapsed(true)}
-                />
-              ) : (
-                <div className="bg-gray-900/90 border border-gray-700 rounded-lg p-3 text-gray-400 text-sm h-full flex items-center justify-center">
-                  Select a profile to view the distance timeline.
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        {timelineCollapsed ? (
+          <button
+            onClick={() => setTimelineCollapsed(false)}
+            className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
+          >
+            Show timeline
+          </button>
+        ) : (
+          <DistanceTimeline
+            samples={distanceSamples}
+            currentTime={currentTime}
+            anchorTime={anchorTime}
+            rangeDays={SEARCH_RANGE_DAYS}
+            onTimeChange={handleTimeChange}
+            height={TIMELINE_HEIGHT}
+            currentDistanceKm={currentDistance ?? undefined}
+            onCollapse={() => setTimelineCollapsed(true)}
+          />
+        )}
+      </div>
 
         {/* Bottom-right view controls (main view) */}
         <div
@@ -566,11 +566,21 @@ export default function App() {
                 Show anti-solar point
               </label>
               <label className="flex items-center gap-2 text-xs">
-                <input type="checkbox" checked={showMainLos} onChange={e => setShowMainLos(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={hasSatellites && showMainLos}
+                  disabled={!hasSatellites}
+                  onChange={e => setShowMainLos(e.target.checked)}
+                />
                 Show LoS A→B
               </label>
               <label className="flex items-center gap-2 text-xs">
-                <input type="checkbox" checked={showMainSunLine} onChange={e => setShowMainSunLine(e.target.checked)} />
+                <input
+                  type="checkbox"
+                  checked={hasSatellites && showMainSunLine}
+                  disabled={!hasSatellites}
+                  onChange={e => setShowMainSunLine(e.target.checked)}
+                />
                 Show Sun line at B
               </label>
             </div>
