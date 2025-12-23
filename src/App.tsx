@@ -403,18 +403,24 @@ export default function App() {
 
         {/* Orbital Parameters */}
         <div className="mb-6">
-          <OrbitalParams
-            tleA={activeTleA}
-            tleB={activeTleB}
-            positionA={positionA}
-            positionB={positionB}
-            currentDistance={currentDistance}
-            relativeVelocity={currentRelativeVelocity}
-          />
+          {hasSatellites ? (
+            <OrbitalParams
+              tleA={activeTleA}
+              tleB={activeTleB}
+              positionA={positionA}
+              positionB={positionB}
+              currentDistance={currentDistance}
+              relativeVelocity={currentRelativeVelocity}
+            />
+          ) : (
+            <div className="bg-gray-800 p-4 rounded-lg text-gray-400 text-sm">
+              Select a profile or choose two satellites to view orbital parameters.
+            </div>
+          )}
         </div>
 
         {/* Conjunctions */}
-        {tleA && tleB && (
+        {hasSatellites && tleA && tleB && (
           <ConjunctionPanel
             conjunctions={conjunctions}
             loading={conjunctionsLoading}
@@ -490,13 +496,19 @@ export default function App() {
               >
                 ×
               </button>
-              <RelativeViewPanel
-                positionA={positionA}
-                positionB={positionB}
-                tleA={activeTleA}
-                tleB={activeTleB}
-                currentTime={currentTime}
-              />
+              {hasSatellites ? (
+                <RelativeViewPanel
+                  positionA={positionA}
+                  positionB={positionB}
+                  tleA={activeTleA}
+                  tleB={activeTleB}
+                  currentTime={currentTime}
+                />
+              ) : (
+                <div className="bg-gray-800/95 border border-gray-700 rounded-lg p-3 shadow-xl text-sm text-gray-300">
+                  Select two satellites to view the A→B relative panel.
+                </div>
+              )}
             </div>
           )}
         </div>
