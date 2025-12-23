@@ -32,8 +32,6 @@ const MIN_FOV_DEG = 0.001;
 export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTime }: RelativeViewPanelProps) {
   const [fov, setFov] = useState<number>(45);
   const [autoFit, setAutoFit] = useState<boolean>(true);
-  const [lockFov, setLockFov] = useState<boolean>(false);
-  const [lockedFov, setLockedFov] = useState<number | null>(null);
   const [showLos, setShowLos] = useState<boolean>(true);
   const [showSunLine, setShowSunLine] = useState<boolean>(true);
   const [showTrack, setShowTrack] = useState<boolean>(true);
@@ -94,12 +92,7 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
   }, [relativeTrack]);
 
   const autoFov = derived ? pickFov(derived.rangeKm, true, fov) : fov;
-  const displayFov =
-    lockFov && lockedFov !== null
-      ? lockedFov
-      : autoFit && derived
-        ? autoFov
-        : fov;
+  const displayFov = autoFit && derived ? autoFov : fov;
 
   const fovRad = (displayFov * Math.PI) / 180;
   const displaySpanM = derived
@@ -131,8 +124,6 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
           key={val}
           onClick={() => {
             setAutoFit(false);
-            setLockFov(false);
-            setLockedFov(null);
             setFov(val);
           }}
           className={`px-2 py-1 rounded text-[10px] ${
@@ -164,32 +155,10 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
                 onChange={e => {
                   const checked = e.target.checked;
                   setAutoFit(checked);
-                  if (!checked) {
-                    setLockFov(false);
-                    setLockedFov(null);
-                  }
                 }}
               />
               Auto-fit FoV
             </label>
-            <button
-              onClick={() => {
-                if (lockFov) {
-                  setLockFov(false);
-                  setLockedFov(null);
-                } else {
-                  setLockedFov(displayFov);
-                  setLockFov(true);
-                }
-              }}
-              disabled={!derived || !autoFit}
-              className={`px-2 py-1 text-[11px] rounded whitespace-nowrap ${
-                lockFov ? 'bg-blue-700 text-white' : 'bg-gray-800 text-gray-200 hover:bg-gray-700'
-              } disabled:opacity-40`}
-              title="Freeze the current auto-fit FoV while scrubbing time"
-            >
-              {lockFov ? 'Unlock FoV' : 'Lock FoV'}
-            </button>
           </div>
           {fovButtons}
         </div>
