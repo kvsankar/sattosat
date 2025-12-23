@@ -314,11 +314,20 @@ function RelativeScene({
             side={THREE.DoubleSide}
           />
         </mesh>
+        {/* Sun normal indicator */}
+        <Line
+          points={[
+            [relThree[0], relThree[1], relThree[2]],
+            [relThree[0] + sunDirThree.x * 2, relThree[1] + sunDirThree.y * 2, relThree[2] + sunDirThree.z * 2],
+          ]}
+          color="#facc15"
+          lineWidth={3}
+        />
         {trackThree.length > 1 && (
           <Line
             points={trackThree}
             color="#22c55e"
-            lineWidth={2}
+            lineWidth={3}
           />
         )}
         <Html
