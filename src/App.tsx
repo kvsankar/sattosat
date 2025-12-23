@@ -130,6 +130,7 @@ export default function App() {
   const hasSatA = !!activeTleA && !!positionA;
   const hasSatB = !!activeTleB && !!positionB;
   const hasPair = hasSatA && hasSatB;
+  const pairEnabled = profileActive && hasPair;
   useEffect(() => {
     if (!hasPair) {
       setShowMainLos(false);
@@ -146,7 +147,7 @@ export default function App() {
   } = useConjunctions(tleA, tleB, allTlesA, allTlesB, currentTime, SEARCH_RANGE_DAYS, anchorTime);
 
   const distanceSamples = useMemo(() => {
-    if (!hasPair) return [];
+    if (!pairEnabled) return [];
     const tlesAForCurve = allTlesA.length ? allTlesA : (tleA ? [tleA] : []);
     const tlesBForCurve = allTlesB.length ? allTlesB : (tleB ? [tleB] : []);
     if (tlesAForCurve.length === 0 || tlesBForCurve.length === 0) return [];
@@ -409,7 +410,7 @@ export default function App() {
 
         {/* Orbital Parameters */}
         <div className="mb-6">
-          {hasSatellites ? (
+          {pairEnabled ? (
             <OrbitalParams
               tleA={activeTleA}
               tleB={activeTleB}
@@ -420,13 +421,13 @@ export default function App() {
             />
           ) : (
             <div className="bg-gray-800 p-4 rounded-lg text-gray-400 text-sm">
-              Select a profile or choose two satellites to view orbital parameters.
+              Select two satellites to view orbital parameters.
             </div>
           )}
         </div>
 
         {/* Conjunctions */}
-        {hasSatellites && tleA && tleB && (
+        {pairEnabled && tleA && tleB && (
           <ConjunctionPanel
             conjunctions={conjunctions}
             loading={conjunctionsLoading}
@@ -458,7 +459,7 @@ export default function App() {
         >
           <Scene
             satelliteA={
-              hasSatellites && activeTleA
+              hasSatA && activeTleA
                 ? {
                     name: activeTleA.name,
                     position: positionA,
@@ -467,7 +468,7 @@ export default function App() {
                 : null
             }
             satelliteB={
-              hasSatellites && activeTleB
+              hasSatB && activeTleB
                 ? {
                     name: activeTleB.name,
                     position: positionB,
@@ -479,8 +480,8 @@ export default function App() {
             showGrid={showGrid}
             showTerminator={showTerminator}
             showAntiSolar={showAntiSolar}
-            showMainLos={hasSatellites && showMainLos}
-            showMainSunLine={hasSatellites && showMainSunLine}
+            showMainLos={pairEnabled && showMainLos}
+            showMainSunLine={pairEnabled && showMainSunLine}
           />
         </div>
 
@@ -502,7 +503,7 @@ export default function App() {
               >
                 ×
               </button>
-              {hasSatellites ? (
+              {pairEnabled ? (
                 <RelativeViewPanel
                   positionA={positionA}
                   positionB={positionB}
@@ -586,8 +587,8 @@ export default function App() {
               <label className="flex items-center gap-2 text-xs">
                 <input
                   type="checkbox"
-                  checked={hasSatellites && showMainLos}
-                  disabled={!hasSatellites}
+                  checked={pairEnabled && showMainLos}
+                  disabled={!pairEnabled}
                   onChange={e => setShowMainLos(e.target.checked)}
                 />
                 Show LoS A→B
@@ -595,8 +596,8 @@ export default function App() {
               <label className="flex items-center gap-2 text-xs">
                 <input
                   type="checkbox"
-                  checked={hasSatellites && showMainSunLine}
-                  disabled={!hasSatellites}
+                  checked={pairEnabled && showMainSunLine}
+                  disabled={!pairEnabled}
                   onChange={e => setShowMainSunLine(e.target.checked)}
                 />
                 Show Sun line at B
