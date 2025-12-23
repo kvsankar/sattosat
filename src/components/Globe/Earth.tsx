@@ -41,7 +41,7 @@ export function Earth({ currentTime, showGrid }: EarthProps) {
 
 function EarthSphere() {
   // Load textures
-  const [dayMap, , bumpMap] = useTexture([
+  const [dayMap, nightMap, bumpMap] = useTexture([
     EARTH_TEXTURE_URL,
     EARTH_NIGHT_URL,
     EARTH_BUMP_URL,
@@ -54,9 +54,10 @@ function EarthSphere() {
         bumpMap={bumpMap}
         bumpScale={0.02}
         metalness={0.05}
-        roughness={0.6}
+        roughness={0.55}
+        emissiveMap={nightMap}
+        emissiveIntensity={0.6}
         emissive="#0b1a2a"
-        emissiveIntensity={0.2}
       />
     </Sphere>
   );

@@ -258,6 +258,7 @@ function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, velB,
         panelSize={panelSize}
         sunDirThree={sunDirThree}
         trackThree={track}
+        velocityDir={velocityDir}
       />
     </Canvas>
   );
@@ -272,6 +273,7 @@ interface RelativeSceneProps {
   panelSize: { width: number; height: number };
   sunDirThree: THREE.Vector3;
   trackThree: [number, number, number][];
+  velocityDir: THREE.Vector3 | null;
 }
 
 function RelativeScene({
@@ -283,6 +285,7 @@ function RelativeScene({
   panelSize,
   sunDirThree,
   trackThree,
+  velocityDir,
 }: RelativeSceneProps) {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   useFrame(() => {
@@ -314,14 +317,17 @@ function RelativeScene({
             side={THREE.DoubleSide}
           />
         </mesh>
-        {/* Sun normal indicator */}
+        {/* Sun direction indicator (thin dashed yellow) */}
         <Line
           points={[
             [relThree[0], relThree[1], relThree[2]],
             [relThree[0] + sunDirThree.x * 2, relThree[1] + sunDirThree.y * 2, relThree[2] + sunDirThree.z * 2],
           ]}
           color="#facc15"
-          lineWidth={3}
+          lineWidth={1}
+          dashed
+          dashSize={0.2}
+          gapSize={0.1}
         />
         {trackThree.length > 1 && (
           <Line
@@ -356,15 +362,26 @@ function RelativeScene({
           <meshStandardMaterial color="#1e3a8a" transparent opacity={0.35} />
         </mesh>
 
-        {/* Sightline */}
+        {/* Sightline (LoS) */}
         <Line
           points={[
             [0, 0, 0],
             [relThree[0], relThree[1], relThree[2]],
           ]}
           color="#38bdf8"
-          lineWidth={2}
+          lineWidth={1}
         />
+        {/* Velocity direction from B */}
+        {velocityDir && (
+          <Line
+            points={[
+              [relThree[0], relThree[1], relThree[2]],
+              [relThree[0] + velocityDir.x * 2, relThree[1] + velocityDir.y * 2, relThree[2] + velocityDir.z * 2],
+            ]}
+            color="#f97316"
+            lineWidth={1.5}
+          />
+        )}
       </group>
     </>
   );

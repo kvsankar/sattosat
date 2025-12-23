@@ -52,7 +52,7 @@ export function Scene({ satelliteA, satelliteB, currentTime, showGrid }: ScenePr
 
         {/* Lighting - Sun position based on actual time */}
         {/* Ambient boost for night-side visibility */}
-        <ambientLight intensity={0.12} />
+        <ambientLight intensity={0.08} />
         {/* Strong directional sun light for day/night contrast */}
         <directionalLight
           position={sunPosition}
@@ -60,9 +60,7 @@ export function Scene({ satelliteA, satelliteB, currentTime, showGrid }: ScenePr
           color="#fffaf0"
         />
         {/* Hemisphere light for subtle Earth glow on night side */}
-        <hemisphereLight
-          args={['#87ceeb', '#000022', 0.35]}
-        />
+        <hemisphereLight args={['#87ceeb', '#000022', 0.2]} />
 
         {/* Starfield background */}
         <Stars
