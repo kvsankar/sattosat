@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Stars, PerspectiveCamera } from '@react-three/drei';
+import { OrbitControls, Stars, PerspectiveCamera, Line } from '@react-three/drei';
 import { Earth } from './Earth';
 import { Orbit } from './Orbit';
 import { Satellite } from './Satellite';
@@ -128,27 +128,33 @@ export function Scene({ satelliteA, satelliteB, currentTime, showGrid, showTermi
 }
 
 function TerminatorLine({ sunDirection }: { sunDirection: [number, number, number] }) {
-  const { geometry, material } = useMemo(() => {
+  const points = useMemo(() => {
     const normal = new THREE.Vector3(-sunDirection[0], -sunDirection[1], -sunDirection[2]).normalize();
     const ref = Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
     const u = new THREE.Vector3().crossVectors(normal, ref).normalize();
     const v = new THREE.Vector3().crossVectors(normal, u).normalize();
     const radius = 1.001;
     const segments = 256;
-    const points: THREE.Vector3[] = [];
+    const pts: [number, number, number][] = [];
     for (let i = 0; i <= segments; i++) {
       const t = (i / segments) * Math.PI * 2;
       const p = new THREE.Vector3().addVectors(
         u.clone().multiplyScalar(Math.cos(t) * radius),
         v.clone().multiplyScalar(Math.sin(t) * radius)
       );
-      points.push(new THREE.Vector3(p.x, p.y, p.z));
+      pts.push([p.x, p.y, p.z]);
     }
-    return {
-      geometry: new THREE.BufferGeometry().setFromPoints(points),
-      material: new THREE.LineBasicMaterial({ color: '#facc15', linewidth: 1 }),
-    };
+    return pts;
   }, [sunDirection]);
 
-  return <primitive object={new THREE.Line(geometry, material)} />;
+  return (
+    <Line
+      points={points}
+      color="#facc15"
+      lineWidth={1}
+      dashed
+      dashSize={0.05}
+      gapSize={0.02}
+    />
+  );
 }

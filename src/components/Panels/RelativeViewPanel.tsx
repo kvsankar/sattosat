@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { PerspectiveCamera, Line, Html } from '@react-three/drei';
+import { PerspectiveCamera, Line, Html, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { SatellitePosition, ECIPosition } from '../../types/satellite';
 import { EARTH_RADIUS_KM } from '../../lib/orbit';
@@ -24,6 +24,11 @@ const MIN_FOV_DEG = 0.001;
 export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPathB = [] }: RelativeViewPanelProps) {
   const [fov, setFov] = useState<number>(45);
   const [autoFit, setAutoFit] = useState<boolean>(true);
+  const [lockView, setLockView] = useState<boolean>(true);
+  const [showLos, setShowLos] = useState<boolean>(true);
+  const [showSunLine, setShowSunLine] = useState<boolean>(true);
+  const [showTrack, setShowTrack] = useState<boolean>(true);
+  const [showVelocity, setShowVelocity] = useState<boolean>(true);
 
   const derived = useMemo(() => {
     if (!positionA || !positionB) return null;
@@ -51,6 +56,15 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
     if (!derived || !positionA || orbitPathB.length === 0) return [];
     return orbitPathB.map(p => eciToThree(subtract(p, positionA.eci), derived.scale));
   }, [derived, orbitPathB, positionA]);
+
+  const trackParts = useMemo(() => {
+    if (relativeTrack.length === 0) return { past: [], future: [] };
+    const mid = Math.floor(relativeTrack.length / 2);
+    return {
+      past: relativeTrack.slice(0, mid + 1),
+      future: relativeTrack.slice(mid),
+    };
+  }, [relativeTrack]);
 
   const displayFov = derived ? pickFov(derived.rangeKm, autoFit, fov) : fov;
   const displaySpanM = derived
@@ -123,7 +137,13 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
                   fov={computedFov}
                   sunFromB={derived.sunFromB}
                   velB={derived.velB}
-                  track={relativeTrack}
+                  trackPast={trackParts.past}
+                  trackFuture={trackParts.future}
+                  showLos={showLos}
+                  showSunLine={showSunLine}
+                  showTrack={showTrack}
+                  showVelocity={showVelocity}
+                  lockView={lockView}
                   earthPosition={{
                     x: -positionA!.eci.x,
                     y: -positionA!.eci.y,
@@ -132,6 +152,28 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
                 />
                 <div className="absolute bottom-1 right-2 text-[11px] text-gray-200 bg-black/60 px-2 py-0.5 rounded">
                   FoV {(computedFov * 60).toFixed(2)}′ / {formatSpan(displaySpanM)}
+                </div>
+                <div className="absolute top-2 right-2 text-[11px] text-gray-200 bg-black/60 px-2 py-1 rounded flex flex-col gap-1">
+                  <label className="flex items-center gap-1">
+                    <input type="checkbox" checked={!lockView} onChange={e => setLockView(!e.target.checked)} />
+                    Unlock view
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <input type="checkbox" checked={showLos} onChange={e => setShowLos(e.target.checked)} />
+                    LoS
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <input type="checkbox" checked={showSunLine} onChange={e => setShowSunLine(e.target.checked)} />
+                    Sun line
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <input type="checkbox" checked={showTrack} onChange={e => setShowTrack(e.target.checked)} />
+                    Orbit track
+                  </label>
+                  <label className="flex items-center gap-1">
+                    <input type="checkbox" checked={showVelocity} onChange={e => setShowVelocity(e.target.checked)} />
+                    Velocity
+                  </label>
                 </div>
               </div>
             );
@@ -191,11 +233,32 @@ interface RelativeViewCanvasProps {
   sunEci: { x: number; y: number; z: number };
   sunFromB: { x: number; y: number; z: number };
   velB?: { x: number; y: number; z: number };
-  track: [number, number, number][];
+  trackPast: [number, number, number][];
+  trackFuture: [number, number, number][];
+  showLos: boolean;
+  showSunLine: boolean;
+  showTrack: boolean;
+  showVelocity: boolean;
+  lockView: boolean;
   fov: number;
 }
 
-function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, velB, track, fov }: RelativeViewCanvasProps) {
+function RelativeViewCanvas({
+  rel,
+  earthPosition,
+  scale,
+  sunEci,
+  sunFromB,
+  velB,
+  trackPast,
+  trackFuture,
+  showLos,
+  showSunLine,
+  showTrack,
+  showVelocity,
+  lockView,
+  fov
+}: RelativeViewCanvasProps) {
   const relThree = useMemo(() => eciToThree(rel, scale), [rel, scale]);
   const earthThree = useMemo(() => eciToThree(earthPosition, scale), [earthPosition, scale]);
   const sunDirThree = useMemo(() => {
@@ -249,6 +312,7 @@ function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, velB,
 
   return (
     <Canvas>
+      {!lockView && <OrbitControls enablePan enableZoom enableRotate />}
       <RelativeScene
         fov={fov}
         relThree={relThree}
@@ -257,8 +321,15 @@ function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, velB,
         panelRotation={panelRotation}
         panelSize={panelSize}
         sunDirThree={sunDirThree}
-        trackThree={track}
+        trackThree={[...trackPast, ...trackFuture]}
         velocityDir={velocityDir}
+        showLos={showLos}
+        showSunLine={showSunLine}
+        showTrack={showTrack}
+        showVelocity={showVelocity}
+        lockView={lockView}
+        trackPast={trackPast}
+        trackFuture={trackFuture}
       />
     </Canvas>
   );
@@ -273,7 +344,14 @@ interface RelativeSceneProps {
   panelSize: { width: number; height: number };
   sunDirThree: THREE.Vector3;
   trackThree: [number, number, number][];
+  trackPast?: [number, number, number][];
+  trackFuture?: [number, number, number][];
   velocityDir: THREE.Vector3 | null;
+  showLos: boolean;
+  showSunLine: boolean;
+  showTrack: boolean;
+  showVelocity: boolean;
+  lockView: boolean;
 }
 
 function RelativeScene({
@@ -284,8 +362,13 @@ function RelativeScene({
   panelRotation,
   panelSize,
   sunDirThree,
-  trackThree,
+  trackPast = [],
+  trackFuture = [],
   velocityDir,
+  showLos,
+  showSunLine,
+  showTrack,
+  showVelocity,
 }: RelativeSceneProps) {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   useFrame(() => {
@@ -318,22 +401,34 @@ function RelativeScene({
           />
         </mesh>
         {/* Sun direction indicator (thin dashed yellow) */}
-        <Line
-          points={[
-            [relThree[0], relThree[1], relThree[2]],
-            [relThree[0] + sunDirThree.x * 2, relThree[1] + sunDirThree.y * 2, relThree[2] + sunDirThree.z * 2],
-          ]}
-          color="#facc15"
-          lineWidth={1}
-          dashed
-          dashSize={0.2}
-          gapSize={0.1}
-        />
-        {trackThree.length > 1 && (
+        {showSunLine && (
           <Line
-            points={trackThree}
+            points={[
+              [relThree[0], relThree[1], relThree[2]],
+              [relThree[0] + sunDirThree.x * 2, relThree[1] + sunDirThree.y * 2, relThree[2] + sunDirThree.z * 2],
+            ]}
+            color="#facc15"
+            lineWidth={1}
+            dashed
+            dashSize={0.2}
+            gapSize={0.1}
+          />
+        )}
+        {showTrack && trackPast.length > 1 && (
+          <Line
+            points={trackPast}
             color="#22c55e"
-            lineWidth={3}
+            lineWidth={2}
+            dashed
+            dashSize={0.2}
+            gapSize={0.1}
+          />
+        )}
+        {showTrack && trackFuture.length > 1 && (
+          <Line
+            points={trackFuture}
+            color="#22c55e"
+            lineWidth={2.5}
           />
         )}
         <Html
@@ -363,24 +458,38 @@ function RelativeScene({
         </mesh>
 
         {/* Sightline (LoS) */}
-        <Line
-          points={[
-            [0, 0, 0],
-            [relThree[0], relThree[1], relThree[2]],
-          ]}
-          color="#38bdf8"
-          lineWidth={1}
-        />
-        {/* Velocity direction from B */}
-        {velocityDir && (
+        {showLos && (
           <Line
             points={[
+              [0, 0, 0],
               [relThree[0], relThree[1], relThree[2]],
-              [relThree[0] + velocityDir.x * 2, relThree[1] + velocityDir.y * 2, relThree[2] + velocityDir.z * 2],
             ]}
-            color="#f97316"
-            lineWidth={1.5}
+            color="#38bdf8"
+            lineWidth={0.75}
           />
+        )}
+        {/* Velocity direction from B */}
+        {showVelocity && velocityDir && (
+          <>
+            <Line
+              points={[
+                [relThree[0], relThree[1], relThree[2]],
+                [relThree[0] + velocityDir.x * 2, relThree[1] + velocityDir.y * 2, relThree[2] + velocityDir.z * 2],
+              ]}
+              color="#f97316"
+              lineWidth={1.2}
+            />
+            <mesh
+              position={[
+                relThree[0] + velocityDir.x * 2,
+                relThree[1] + velocityDir.y * 2,
+                relThree[2] + velocityDir.z * 2,
+              ]}
+            >
+              <coneGeometry args={[0.05, 0.12, 8]} />
+              <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={0.4} />
+            </mesh>
+          </>
         )}
       </group>
     </>
