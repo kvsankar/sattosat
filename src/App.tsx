@@ -335,9 +335,10 @@ export default function App() {
             currentTime={currentTime}
             onTimeChange={handleTimeChange}
             onNow={handleNow}
+            onAnchor={() => setCurrentTime(anchorTime)}
             rangeDays={SEARCH_RANGE_DAYS}
             anchorTime={anchorTime}
-            showNow={!selectedProfileName}
+            showNow={true}
           />
         </div>
 
