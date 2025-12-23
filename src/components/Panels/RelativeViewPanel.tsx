@@ -236,9 +236,6 @@ function RelativeViewCanvas({ rel, earthPosition, scale, sunEci, sunFromB, velB,
       0, 0, 0, 1
     );
     q.setFromRotationMatrix(m);
-    const roll = new THREE.Quaternion();
-    roll.setFromAxisAngle(correctedNormal, Math.PI / 2);
-    q.multiply(roll);
     return q;
   }, [sunFromBDir, velocityDir]);
 
