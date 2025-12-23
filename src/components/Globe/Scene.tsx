@@ -6,6 +6,7 @@ import { Orbit } from './Orbit';
 import { Satellite } from './Satellite';
 import type { SatellitePosition, ECIPosition } from '../../types/satellite';
 import { calculateSunPosition } from '../../lib/sun';
+import * as THREE from 'three';
 
 interface SceneProps {
   satelliteA: {
@@ -20,9 +21,11 @@ interface SceneProps {
   } | null;
   currentTime: Date;
   showGrid: boolean;
+  showTerminator: boolean;
+  showAntiSolar: boolean;
 }
 
-export function Scene({ satelliteA, satelliteB, currentTime, showGrid }: SceneProps) {
+export function Scene({ satelliteA, satelliteB, currentTime, showGrid, showTerminator, showAntiSolar }: SceneProps) {
   // Calculate sun position in ECI coordinates, then convert to Three.js
   const sunPosition = useMemo(() => {
     const sunEci = calculateSunPosition(currentTime);
@@ -75,6 +78,17 @@ export function Scene({ satelliteA, satelliteB, currentTime, showGrid }: ScenePr
         {/* Earth */}
         <Earth currentTime={currentTime} showGrid={showGrid} />
 
+        {showAntiSolar && (
+          <mesh position={[ -sunPosition[0] / 50, -sunPosition[1] / 50, -sunPosition[2] / 50 ]}>
+            <sphereGeometry args={[0.03, 16, 16]} />
+            <meshStandardMaterial color="#facc15" emissive="#facc15" emissiveIntensity={0.8} />
+          </mesh>
+        )}
+
+        {showTerminator && (
+          <TerminatorLine sunDirection={sunPosition} />
+        )}
+
         {/* Satellite A (Blue) */}
         {satelliteA && (
           <group key="sat-a">
@@ -111,4 +125,30 @@ export function Scene({ satelliteA, satelliteB, currentTime, showGrid }: ScenePr
       </Canvas>
     </div>
   );
+}
+
+function TerminatorLine({ sunDirection }: { sunDirection: [number, number, number] }) {
+  const { geometry, material } = useMemo(() => {
+    const normal = new THREE.Vector3(-sunDirection[0], -sunDirection[1], -sunDirection[2]).normalize();
+    const ref = Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+    const u = new THREE.Vector3().crossVectors(normal, ref).normalize();
+    const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+    const radius = 1.001;
+    const segments = 256;
+    const points: THREE.Vector3[] = [];
+    for (let i = 0; i <= segments; i++) {
+      const t = (i / segments) * Math.PI * 2;
+      const p = new THREE.Vector3().addVectors(
+        u.clone().multiplyScalar(Math.cos(t) * radius),
+        v.clone().multiplyScalar(Math.sin(t) * radius)
+      );
+      points.push(new THREE.Vector3(p.x, p.y, p.z));
+    }
+    return {
+      geometry: new THREE.BufferGeometry().setFromPoints(points),
+      material: new THREE.LineBasicMaterial({ color: '#facc15', linewidth: 1 }),
+    };
+  }, [sunDirection]);
+
+  return <primitive object={new THREE.Line(geometry, material)} />;
 }
