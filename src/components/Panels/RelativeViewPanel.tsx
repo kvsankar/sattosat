@@ -150,20 +150,21 @@ export function RelativeViewPanel({ positionA, positionB, currentTime, orbitPath
                     z: -positionA!.eci.z,
                   }}
                 />
-                <div className="absolute bottom-1 right-2 text-[11px] text-gray-200 bg-black/60 px-2 py-0.5 rounded">
+                <div className="absolute bottom-1 right-2 text-[11px] text-gray-200 bg-black/60 px-2 py-0.5 rounded pointer-events-none">
                   FoV {(computedFov * 60).toFixed(2)}′ / {formatSpan(displaySpanM)}
                 </div>
+                <button
+                  className="absolute top-2 right-2 text-sm bg-black/70 text-gray-200 px-2 py-1 rounded"
+                  onClick={() => setLockView(!lockView)}
+                  title={lockView ? 'Unlock view controls' : 'Lock view controls'}
+                >
+                  {lockView ? '🔒' : '🔓'}
+                </button>
               </div>
             );
           })()}
           <div className="bg-gray-800/70 border border-gray-700 rounded p-2 text-xs text-gray-200 space-y-1">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-300">Camera</span>
-              <label className="flex items-center gap-1">
-                <input type="checkbox" checked={!lockView} onChange={e => setLockView(!e.target.checked)} />
-                Unlock
-              </label>
-            </div>
+            <div className="text-gray-300">Camera</div>
             <div className="flex flex-wrap gap-3">
               <label className="flex items-center gap-1">
                 <input type="checkbox" checked={showLos} onChange={e => setShowLos(e.target.checked)} />
@@ -317,7 +318,7 @@ function RelativeViewCanvas({
 
   return (
     <Canvas>
-      {!lockView && <OrbitControls enablePan enableZoom enableRotate />}
+      {!lockView && <OrbitControls makeDefault enablePan enableZoom enableRotate />}
       <RelativeScene
         fov={fov}
         relThree={relThree}
