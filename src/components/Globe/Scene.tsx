@@ -6,6 +6,7 @@ import { Orbit } from './Orbit';
 import { Satellite } from './Satellite';
 import type { SatellitePosition, ECIPosition } from '../../types/satellite';
 import { calculateSunPosition } from '../../lib/sun';
+import { eciToThreeJs } from '../../lib/orbit';
 import * as THREE from 'three';
 
 interface SceneProps {
@@ -23,9 +24,20 @@ interface SceneProps {
   showGrid: boolean;
   showTerminator: boolean;
   showAntiSolar: boolean;
+  showMainLos: boolean;
+  showMainSunLine: boolean;
 }
 
-export function Scene({ satelliteA, satelliteB, currentTime, showGrid, showTerminator, showAntiSolar }: SceneProps) {
+export function Scene({
+  satelliteA,
+  satelliteB,
+  currentTime,
+  showGrid,
+  showTerminator,
+  showAntiSolar,
+  showMainLos,
+  showMainSunLine,
+}: SceneProps) {
   // Calculate sun position in ECI coordinates, then convert to Three.js
   const sunPosition = useMemo(() => {
     const sunEci = calculateSunPosition(currentTime);
@@ -117,9 +129,66 @@ export function Scene({ satelliteA, satelliteB, currentTime, showGrid, showTermi
             />
           </group>
         )}
+
+        {/* Main view overlays */}
+        {showMainSunLine && satelliteB?.position && (
+          <Line
+            points={[
+              eciToThreeJs(satelliteB.position.eci),
+              [
+                eciToThreeJs(satelliteB.position.eci)[0] + sunPosition[0] * 0.05,
+                eciToThreeJs(satelliteB.position.eci)[1] + sunPosition[1] * 0.05,
+                eciToThreeJs(satelliteB.position.eci)[2] + sunPosition[2] * 0.05,
+              ],
+            ]}
+            color="#facc15"
+            lineWidth={1}
+            dashed
+            dashSize={0.1}
+            gapSize={0.05}
+          />
+        )}
+
+        {showMainLos && satelliteA?.position && satelliteB?.position && (
+          <Line
+            points={computeLosPoints(satelliteA.position.eci, satelliteB.position.eci)}
+            color="#38bdf8"
+            lineWidth={1}
+          />
+        )}
       </Canvas>
     </div>
   );
+}
+
+function computeLosPoints(eciA: ECIPosition, eciB: ECIPosition): [number, number, number][] {
+  const a = eciToThreeJs(eciA);
+  const b = eciToThreeJs(eciB);
+  const dir: [number, number, number] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const mag = Math.sqrt(dir[0] ** 2 + dir[1] ** 2 + dir[2] ** 2) || 1;
+  const ndir: [number, number, number] = [dir[0] / mag, dir[1] / mag, dir[2] / mag];
+
+  const t = intersectRaySphere(a, ndir, 1); // Earth radius = 1
+  const end: [number, number, number] = t
+    ? [a[0] + ndir[0] * t, a[1] + ndir[1] * t, a[2] + ndir[2] * t]
+    : [a[0] + ndir[0] * 3, a[1] + ndir[1] * 3, a[2] + ndir[2] * 3];
+
+  return [a, end];
+}
+
+function intersectRaySphere(origin: [number, number, number], dir: [number, number, number], radius: number): number | null {
+  const ox = origin[0], oy = origin[1], oz = origin[2];
+  const dx = dir[0], dy = dir[1], dz = dir[2];
+  const a = dx * dx + dy * dy + dz * dz;
+  const b = 2 * (ox * dx + oy * dy + oz * dz);
+  const c = ox * ox + oy * oy + oz * oz - radius * radius;
+  const disc = b * b - 4 * a * c;
+  if (disc < 0) return null;
+  const sqrt = Math.sqrt(disc);
+  const t1 = (-b - sqrt) / (2 * a);
+  const t2 = (-b + sqrt) / (2 * a);
+  const t = [t1, t2].filter(v => v > 0).sort((x, y) => x - y)[0];
+  return t ?? null;
 }
 
 function TerminatorLine({ sunDirection }: { sunDirection: [number, number, number] }) {

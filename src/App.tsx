@@ -44,6 +44,8 @@ export default function App() {
   const [selectedProfileName, setSelectedProfileName] = useState<string | null>(null);
   const [showTerminator, setShowTerminator] = useState(true);
   const [showAntiSolar, setShowAntiSolar] = useState(true);
+  const [showMainLos, setShowMainLos] = useState(true);
+  const [showMainSunLine, setShowMainSunLine] = useState(true);
 
   // Load satellite catalog
   const {
@@ -395,6 +397,8 @@ export default function App() {
           showGrid={showGrid}
           showTerminator={showTerminator}
           showAntiSolar={showAntiSolar}
+          showMainLos={showMainLos}
+          showMainSunLine={showMainSunLine}
         />
 
         <div className="absolute top-4 right-4 z-40 w-96 max-w-[420px]">
@@ -421,6 +425,14 @@ export default function App() {
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={showAntiSolar} onChange={e => setShowAntiSolar(e.target.checked)} />
             Show anti-solar point
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={showMainLos} onChange={e => setShowMainLos(e.target.checked)} />
+            Show LoS A→B
+          </label>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={showMainSunLine} onChange={e => setShowMainSunLine(e.target.checked)} />
+            Show Sun line at B
           </label>
         </div>
       </div>
