@@ -199,6 +199,14 @@ export default function App() {
     setPreferredEpochB(null);
   }, [setSelectedIdA, setSelectedIdB]);
 
+  // Auto-load the first profile on startup if available
+  useEffect(() => {
+    if (!selectedProfileName && profiles.length > 0) {
+      handleSelectProfile(profiles[0]!.name);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profiles.length]);
+
   // Keep time synced to real clock when in auto-now mode
   useEffect(() => {
     if (!autoNow) return;
