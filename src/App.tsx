@@ -264,16 +264,6 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profiles.length]);
 
-  // When no profile is active, pin time to selection moment (no animation)
-  useEffect(() => {
-    if (!selectedProfileName) {
-      const now = new Date();
-      setAutoNow(false);
-      setCurrentTime(now);
-      setAnchorTime(now);
-    }
-  }, [selectedProfileName]);
-
   // Keep time synced to real clock when in auto-now mode
   useEffect(() => {
     if (!autoNow) return;
