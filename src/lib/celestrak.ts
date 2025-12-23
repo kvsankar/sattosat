@@ -418,20 +418,36 @@ function cacheTLE(noradId: number, gp: CelestrakGP, line1: string, line2: string
   }
 }
 
-function normalizeTleEntries(entry: TLECacheEntry | any): TLECacheStored[] {
-  if (entry && Array.isArray(entry.entries)) {
-    return entry.entries.map(sanitizeCachedEntry);
+function normalizeTleEntries(entry: unknown): TLECacheStored[] {
+  if (!entry || typeof entry !== 'object') return [];
+
+  const candidate = entry as Partial<TLECacheEntry> & {
+    data?: Partial<TLECacheStored>;
+    gp?: CelestrakGP;
+    line1?: string;
+    line2?: string;
+    timestamp?: number;
+  };
+
+  if (Array.isArray(candidate.entries)) {
+    return candidate.entries.map(sanitizeCachedEntry);
   }
 
-  if (entry && entry.data && entry.data.gp) {
-    const { gp, line1, line2 } = entry.data as { gp: CelestrakGP; line1: string; line2: string };
-    const ts = entry.timestamp ?? Date.now();
-    return [sanitizeCachedEntry({ gp, line1, line2, timestamp: ts })];
+  if (candidate.data?.gp && candidate.data.line1 && candidate.data.line2) {
+    const ts = candidate.timestamp ?? Date.now();
+    return [
+      sanitizeCachedEntry({
+        gp: candidate.data.gp,
+        line1: candidate.data.line1,
+        line2: candidate.data.line2,
+        timestamp: ts,
+      }),
+    ];
   }
 
-  if (entry && entry.gp && entry.line1 && entry.line2) {
-    const ts = entry.timestamp ?? Date.now();
-    return [sanitizeCachedEntry({ gp: entry.gp as CelestrakGP, line1: entry.line1 as string, line2: entry.line2 as string, timestamp: ts })];
+  if (candidate.gp && candidate.line1 && candidate.line2) {
+    const ts = candidate.timestamp ?? Date.now();
+    return [sanitizeCachedEntry({ gp: candidate.gp, line1: candidate.line1, line2: candidate.line2, timestamp: ts })];
   }
 
   return [];

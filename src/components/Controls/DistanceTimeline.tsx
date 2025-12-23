@@ -35,16 +35,20 @@ export function DistanceTimeline({
 
   const viewBoxWidth = 1300;
   const viewBoxHeight = Math.max(140, height - 20);
-  const padding = { left: 60, right: 24, top: 12, bottom: 28 };
-  const innerW = viewBoxWidth - padding.left - padding.right;
-  const innerH = viewBoxHeight - padding.top - padding.bottom;
+  const paddingLeft = 60;
+  const paddingRight = 24;
+  const paddingTop = 12;
+  const paddingBottom = 28;
+  const padding = { left: paddingLeft, right: paddingRight, top: paddingTop, bottom: paddingBottom };
+  const innerW = viewBoxWidth - paddingLeft - paddingRight;
+  const innerH = viewBoxHeight - paddingTop - paddingBottom;
 
   const path = useMemo(() => {
     if (!samples.length || !stats) return '';
     const { min, max, start, end } = stats;
     const span = Math.max(max - min, 1);
-    const scaleX = (t: number) => padding.left + ((t - start) / (end - start)) * innerW;
-    const scaleY = (d: number) => padding.top + innerH - ((d - min) / span) * innerH;
+    const scaleX = (t: number) => paddingLeft + ((t - start) / (end - start)) * innerW;
+    const scaleY = (d: number) => paddingTop + innerH - ((d - min) / span) * innerH;
 
     return samples
       .map((s, i) => {
@@ -53,7 +57,7 @@ export function DistanceTimeline({
         return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
       })
       .join(' ');
-  }, [samples, stats, padding.left, padding.right, padding.top, padding.bottom, innerW, innerH]);
+  }, [samples, stats, innerW, innerH, paddingLeft, paddingTop]);
 
   const handleClick = useCallback(
     (event: React.MouseEvent<SVGSVGElement>) => {
@@ -61,19 +65,19 @@ export function DistanceTimeline({
       const rect = (event.currentTarget as SVGSVGElement).getBoundingClientRect();
       const ratio = Math.min(
         1,
-        Math.max(0, (event.clientX - rect.left - padding.left) / (rect.width - padding.left - padding.right))
+        Math.max(0, (event.clientX - rect.left - paddingLeft) / (rect.width - paddingLeft - paddingRight))
       );
       const target = stats.start + ratio * (stats.end - stats.start);
       onTimeChange(new Date(target));
     },
-    [onTimeChange, stats, padding.left, padding.right]
+    [onTimeChange, paddingLeft, paddingRight, stats]
   );
 
   const min = stats?.min ?? 0;
   const max = stats?.max ?? 1;
   const start = stats?.start ?? 0;
   const end = stats?.end ?? 1;
-  const scaleX = (t: number) => padding.left + ((t - start) / (end - start || 1)) * innerW;
+  const scaleX = (t: number) => paddingLeft + ((t - start) / (end - start || 1)) * innerW;
   const spanLabel = `${-rangeDays}d to +${rangeDays}d`;
   const currentX = scaleX(currentTime.getTime());
   const anchorX = scaleX(anchorTime.getTime());

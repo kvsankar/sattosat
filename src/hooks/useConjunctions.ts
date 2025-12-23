@@ -106,12 +106,14 @@ export function useConjunctions(
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    allTlesA.map(t => t.epoch.getTime()).join(','),
-    allTlesB.map(t => t.epoch.getTime()).join(','),
+    allTlesA,
+    allTlesB,
+    currentTime,
+    searchCenter,
     timeRangeDays,
-    searchCenter ? searchCenter.getTime() : currentTime.getTime()
+    tleA,
+    tleB,
   ]);
 
   return {

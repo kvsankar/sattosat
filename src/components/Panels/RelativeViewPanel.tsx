@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { PerspectiveCamera, Line, Html } from '@react-three/drei';
+import { PerspectiveCamera, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import type { SatellitePosition, SatelliteTLE } from '../../types/satellite';
 import { EARTH_RADIUS_KM, createSatrec } from '../../lib/orbit';
@@ -44,17 +44,18 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
   const satrecA = useMemo(() => {
     if (!tleA) return null;
     return createSatrec({ line1: tleA.line1, line2: tleA.line2 });
-  }, [tleA?.line1, tleA?.line2]);
+  }, [tleA]);
 
   const satrecB = useMemo(() => {
     if (!tleB) return null;
     return createSatrec({ line1: tleB.line1, line2: tleB.line2 });
-  }, [tleB?.line1, tleB?.line2]);
+  }, [tleB]);
 
   const derived = useMemo(() => {
     if (!positionA || !positionB) return null;
     const rel = subtract(positionB.eci, positionA.eci);
-    const rangeKm = magnitude(rel);
+    const rangeKmRaw = magnitude(rel);
+    const rangeKm = Number.isFinite(rangeKmRaw) ? rangeKmRaw : EARTH_RADIUS_KM;
     const sunEci = computeSunForTime(currentTime);
     const phaseAngleDeg = computePhaseAngle(positionA.eci, positionB.eci, sunEci);
     const earthInfo = classifyEarthRelation(positionA.eci, positionB.eci);
@@ -293,8 +294,9 @@ function RelativeViewCanvas({
   showVelocity,
   fov
 }: RelativeViewCanvasProps) {
-  const relThree = useMemo(() => eciToThree(rel, scale), [rel, scale]);
-  const earthThree = useMemo(() => eciToThree(earthPosition, scale), [earthPosition, scale]);
+  const safeScale = Number.isFinite(scale) ? scale : 0;
+  const relThree = useMemo(() => eciToThree(rel, safeScale), [rel, safeScale]);
+  const earthThree = useMemo(() => eciToThree(earthPosition, safeScale), [earthPosition, safeScale]);
   const sunDirThree = useMemo(() => {
     const vec = eciToThree(normalize(sunEci), 1);
     const v = new THREE.Vector3(...vec);
@@ -309,12 +311,12 @@ function RelativeViewCanvas({
   }, [sunFromB]);
 
   const panelSize = useMemo(() => {
-    const width = (TARGET_TOTAL_WIDTH_M / 1000) * scale;
-    const height = (TARGET_HEIGHT_M / 1000) * scale;
+    const width = (TARGET_TOTAL_WIDTH_M / 1000) * safeScale;
+    const height = (TARGET_HEIGHT_M / 1000) * safeScale;
     return { width, height };
-  }, [scale]);
+  }, [safeScale]);
 
-  const earthRadiusScaled = EARTH_RADIUS_KM * scale;
+  const earthRadiusScaled = EARTH_RADIUS_KM * safeScale;
 
   const velocityDir = useMemo(() => {
     if (!velB) return null;
@@ -351,6 +353,7 @@ function RelativeViewCanvas({
         relThree={relThree}
         earthThree={earthThree}
         earthRadiusScaled={earthRadiusScaled}
+        scale={safeScale}
         panelRotation={panelRotation}
         panelSize={panelSize}
         sunDirThree={sunDirThree}
@@ -372,6 +375,7 @@ interface RelativeSceneProps {
   relThree: [number, number, number];
   earthThree: [number, number, number];
   earthRadiusScaled: number;
+  scale: number;
   panelRotation: THREE.Quaternion;
   panelSize: { width: number; height: number };
   sunDirThree: THREE.Vector3;
@@ -390,6 +394,7 @@ function RelativeScene({
   relThree,
   earthThree,
   earthRadiusScaled,
+  scale,
   panelRotation,
   panelSize,
   sunDirThree,
@@ -445,38 +450,28 @@ function RelativeScene({
             depthWrite={false}
           />
         )}
-        {/* Satellite body as 3 rectangular segments with gaps */}
-        {TARGET_SEGMENTS_M.map((segment, idx) => {
-          const leftOffsetM =
-            -TARGET_TOTAL_WIDTH_M / 2 +
-            TARGET_SEGMENTS_M.slice(0, idx).reduce((a, b) => a + b, 0) +
-            (idx > 0 ? idx * TARGET_GAP_M : 0) +
-            segment / 2;
-          const offsetThree = eciToThree(
-            { x: leftOffsetM / 1000, y: 0, z: 0 },
-            scale
-          );
-          return (
-            <mesh
-              key={idx}
-              position={[
-                relThree[0] + offsetThree[0],
-                relThree[1] + offsetThree[1],
-                relThree[2] + offsetThree[2],
-              ]}
-              rotation={new THREE.Euler().setFromQuaternion(panelRotation)}
-              renderOrder={5}
-            >
-              <planeGeometry args={[ (segment / 1000) * scale, panelSize.height ]} />
-              <meshStandardMaterial
-                color="#ef4444"
-                emissive="#ff7f7f"
-                emissiveIntensity={0.3}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
-          );
-        })}
+        {/* Satellite body container: solar | gap | antenna | gap | solar */}
+        <group position={relThree} quaternion={panelRotation}>
+          {TARGET_SEGMENTS_M.map((segment, idx) => {
+            const leftOffsetM =
+              -TARGET_TOTAL_WIDTH_M / 2 +
+              TARGET_SEGMENTS_M.slice(0, idx).reduce((a, b) => a + b, 0) +
+              (idx > 0 ? idx * TARGET_GAP_M : 0) +
+              segment / 2;
+            const offsetX = (leftOffsetM / 1000) * scale;
+            return (
+              <mesh key={idx} position={[offsetX, 0, 0]} renderOrder={5}>
+                <planeGeometry args={[ (segment / 1000) * scale, panelSize.height ]} />
+                <meshStandardMaterial
+                  color="#ef4444"
+                  emissive="#ff7f7f"
+                  emissiveIntensity={0.3}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+            );
+          })}
+        </group>
         {/* Sun direction indicator (thin dashed yellow) */}
         {showSunLine && (
           <Line
@@ -492,26 +487,6 @@ function RelativeScene({
             renderOrder={6}
           />
         )}
-        <Html
-          position={[
-            relThree[0] + panelSize.width * 0.8,
-            relThree[1] + panelSize.height * 1.2,
-            relThree[2],
-          ]}
-          center
-          style={{
-            pointerEvents: 'none',
-            color: '#e5e7eb',
-            fontSize: '11px',
-            background: 'rgba(0,0,0,0.5)',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          12.8m + 2.7m + 12.8m (gaps 0.5m)
-        </Html>
-
         {/* Earth sphere if within view volume */}
         {earthVisible && (
           <mesh position={earthThree} renderOrder={3}>

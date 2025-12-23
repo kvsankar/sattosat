@@ -175,7 +175,7 @@ export default function App() {
     for (const extra of extraPoints) merged.set(extra.time.getTime(), extra);
 
     return Array.from(merged.values()).sort((a, b) => a.time.getTime() - b.time.getTime());
-  }, [allTlesA, allTlesB, tleA, tleB, anchorTime, currentDistance, currentTime, conjunctions]);
+  }, [allTlesA, allTlesB, tleA, tleB, anchorTime, currentDistance, currentTime, conjunctions, pairEnabled]);
 
   // Handlers
   const handleSelectA = useCallback((entry: SatelliteCatalogEntry | null) => {
@@ -252,7 +252,7 @@ export default function App() {
     setSelectedIdB(satB);
     setPreferredEpochA(null);
     setPreferredEpochB(null);
-  }, [setSelectedIdA, setSelectedIdB]);
+  }, [setAnchorTime, setAutoNow, setCurrentTime, setPreferredEpochA, setPreferredEpochB, setSelectedIdA, setSelectedIdB]);
 
   // Auto-load the first profile on startup if available
   useEffect(() => {

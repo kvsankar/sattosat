@@ -93,9 +93,10 @@ export function TimelineSlider({
 
   // Animation loop
   useEffect(() => {
-    setIsPlaying(initialPlaying);
-    if (initialPlaying) setSpeedIndex(0);
-  }, [initialPlaying]);
+    const shouldPlay = initialPlaying && !disabled;
+    setIsPlaying(shouldPlay);
+    if (shouldPlay) setSpeedIndex(0);
+  }, [disabled, initialPlaying]);
 
   // Animation loop
   useEffect(() => {
@@ -114,7 +115,7 @@ export function TimelineSlider({
     }, intervalMs);
 
     return () => clearInterval(interval);
-  }, [isPlaying, speedIndex, currentTime, maxTime, onTimeChange]);
+  }, [currentTime, disabled, isPlaying, maxTime, onTimeChange, speedIndex]);
 
   const formatDate = (date: Date) => {
     return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';

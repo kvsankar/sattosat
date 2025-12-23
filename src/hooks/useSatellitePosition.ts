@@ -26,5 +26,5 @@ export function useSatellitePosition(
       console.error(`Error calculating position for ${tle.name}:`, err);
       return { position: null, orbitPath: [] };
     }
-  }, [tle?.line1, tle?.line2, tle?.name, time]);
+  }, [time, tle]);
 }
