@@ -3,7 +3,7 @@ import type { DistanceSample } from '../../lib/conjunctions';
 import type { SatelliteTLE } from '../../types/satellite';
 import { DistanceTimeline } from './DistanceTimeline';
 
-type MetricId = 'semiMajorAxis' | 'period' | 'raan' | 'argOfPerigee' | 'apogee' | 'perigee' | 'eccentricity';
+type MetricId = 'semiMajorAxis' | 'period' | 'raan' | 'argOfPerigee' | 'apogee' | 'perigee' | 'eccentricity' | 'inclination';
 
 interface TimelineTabsProps {
   distanceSamples: DistanceSample[];

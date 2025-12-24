@@ -442,6 +442,7 @@ function normalizeTleEntries(entry: unknown): TLECacheStored[] {
     line1?: string;
     line2?: string;
     timestamp?: number;
+    source?: 'fetched' | 'manual';
   };
 
   if (Array.isArray(candidate.entries)) {

@@ -343,27 +343,41 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen bg-gray-900 flex text-[12px]">
-      {/* Collapse toggle button */}
-      <div className="absolute top-2.5 left-2.5 z-50">
+      {/* Collapsed sidebar expand button */}
+      {panelCollapsed && (
         <button
-          onClick={() => setPanelCollapsed(!panelCollapsed)}
-          className="w-8 h-8 bg-gray-800 hover:bg-gray-700 text-white rounded-full shadow-lg transition-all text-sm flex items-center justify-center border border-gray-700"
-          title={panelCollapsed ? 'Show panel' : 'Hide panel'}
+          onClick={() => setPanelCollapsed(false)}
+          className="absolute top-2 left-2 z-50 w-8 h-8 bg-gray-800 hover:bg-gray-700 text-white rounded shadow-lg text-sm flex items-center justify-center border border-gray-700"
+          title="Show panel"
         >
-          {panelCollapsed ? '▸' : '◂'}
+          ▸
         </button>
-      </div>
+      )}
 
       {/* Left sidebar */}
       <div
-        className={`w-[20rem] flex-shrink-0 px-2.5 py-2 overflow-y-auto border-r border-gray-700 transition-all duration-300 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent hover:scrollbar-thumb-gray-600 ${
+        className={`w-[20rem] flex-shrink-0 overflow-y-auto border-r border-gray-700 transition-all duration-300 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent hover:scrollbar-thumb-gray-600 ${
           panelCollapsed ? '-ml-[20rem]' : 'ml-0'
         }`}
       >
-        <h1 className="text-lg font-bold text-white mb-1">SatOrbitViz</h1>
-        <p className="text-gray-400 text-xs mb-2 leading-snug">
-          Satellite Orbit Visualization & Conjunction Finder
-        </p>
+        {/* Sidebar header with collapse button */}
+        <div className="flex items-center justify-between px-2.5 py-2 border-b border-gray-700">
+          <div>
+            <h1 className="text-lg font-bold text-white leading-tight">SatOrbitViz</h1>
+            <p className="text-gray-400 text-xs leading-snug">
+              Orbit Visualization & Conjunction Finder
+            </p>
+          </div>
+          <button
+            onClick={() => setPanelCollapsed(true)}
+            className="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded text-sm flex items-center justify-center border border-gray-700 flex-shrink-0"
+            title="Hide panel"
+          >
+            ◂
+          </button>
+        </div>
+
+        <div className="px-2.5 py-2">
 
         <div className="mb-3 border border-gray-700 rounded-md overflow-hidden">
           <button
@@ -521,6 +535,7 @@ export default function App() {
         <div className="mt-6 pt-4 border-t border-gray-700 text-gray-500 text-xs">
           <p>TLE data from Celestrak</p>
           <p>Propagation via SGP4/SDP4</p>
+        </div>
         </div>
       </div>
 
