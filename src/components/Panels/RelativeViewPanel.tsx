@@ -15,14 +15,14 @@ interface RelativeViewPanelProps {
   currentTime: Date;
 }
 
-// Include very narrow FoVs so a 10 m target at a few hundred km spans multiple pixels
-// Presets expressed in degrees, but labeled in arcminutes:
-// 0.5', 3', 20', 120'
+// FoV presets in degrees
+// Narrow FoVs for target tracking, wide for context
 const FOV_PRESETS = [
-  0.5 / 60,   // 0.5 arcmin
-  3 / 60,     // 3 arcmin
-  20 / 60,    // 20 arcmin
-  120 / 60,   // 120 arcmin (2 degrees)
+  { value: 0.5 / 60, label: "0.5′" },    // 0.5 arcmin - very narrow
+  { value: 3 / 60, label: "3′" },        // 3 arcmin
+  { value: 20 / 60, label: "20′" },      // 20 arcmin
+  { value: 2, label: "2°" },             // 2 degrees
+  { value: 90, label: "90°" },           // 90 degrees - shows Earth
 ];
 // Target rendered as three rectangular segments with gaps:
 // 12.8m + 0.5m gap + 2.7m + 0.5m gap + 12.8m
@@ -122,21 +122,28 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
     return angle <= fovRad / 2 + earthAngular;
   }, [derived, fovRad]);
 
+  const formatFov = (deg: number) => {
+    if (deg >= 1) return `${deg.toFixed(0)}°`;
+    return `${(deg * 60).toFixed(1)}′`;
+  };
+
   const fovButtons = (
-    <div className="flex gap-1 flex-nowrap justify-end overflow-x-auto max-w-[14rem]">
-      {FOV_PRESETS.map(val => (
+    <div className="flex gap-1 flex-wrap">
+      {FOV_PRESETS.map(preset => (
         <button
-          key={val}
+          key={preset.value}
           onClick={() => {
             setAutoFit(false);
-            setFov(val);
+            setFov(preset.value);
           }}
-          className={`px-2 py-1 rounded text-[10px] ${
-            !autoFit && fov === val ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          className={`px-2 py-0.5 rounded text-[10px] transition-colors ${
+            !autoFit && fov === preset.value
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
-          title={`${val}° (${(val * 60).toFixed(2)} arcmin)`}
+          title={`${preset.value}° FoV`}
         >
-          {(val * 60).toFixed(1)}′
+          {preset.label}
         </button>
       ))}
     </div>
@@ -144,103 +151,92 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
 
   return (
     <div className="p-3 text-sm text-gray-200">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex-1 pr-4 min-w-0">
-          <div className="text-white font-semibold">View from Satellite A</div>
-        </div>
-        <div className="flex flex-col items-end gap-1 flex-shrink-0 w-[15rem]">
-          <div className="text-[11px] text-gray-400">
-            FoV: {(displayFov * 60).toFixed(1)}′{autoFit && derived ? ' (auto)' : ''}
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1 text-xs text-gray-300 whitespace-nowrap">
-              <input
-                type="checkbox"
-                checked={autoFit}
-                onChange={e => {
-                  const checked = e.target.checked;
-                  setAutoFit(checked);
-                }}
-              />
-              Auto-fit FoV
-            </label>
-          </div>
+      {/* FoV Controls */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-[11px] text-gray-300 cursor-pointer hover:text-white transition-colors">
+            <input
+              type="checkbox"
+              checked={autoFit}
+              onChange={e => setAutoFit(e.target.checked)}
+              className="accent-blue-500"
+            />
+            Auto FoV
+          </label>
+          <span className="text-[11px] text-gray-500">|</span>
           {fovButtons}
+        </div>
+        <div className="text-[11px] text-gray-400 font-mono">
+          {formatFov(displayFov)}{autoFit && derived ? ' (auto)' : ''}
         </div>
       </div>
 
       {!derived ? (
-        <div className="text-gray-400 text-sm">Select both satellites to view.</div>
+        <div className="text-gray-500 text-sm text-center py-8">Select both satellites to view.</div>
       ) : (
         <>
-          {(() => {
-            const computedFov = displayFov;
-            return (
-              <div className="h-56 bg-black rounded overflow-hidden mb-3 relative">
-                <RelativeViewCanvas
-                  rel={derived.rel}
-                  scale={derived.scale}
-                  sunEci={derived.sunEci}
-                  fov={computedFov}
-                  sunFromB={derived.sunFromB}
-                  velB={derived.velB}
-                  trackPoints={trackLinePoints}
-                  showLos={showLos}
-                  showSunLine={showSunLine}
-                  showTrack={showTrack}
-                  showVelocity={showVelocity}
-                  earthVisible={earthVisible}
-                  earthPosition={{
-                    x: -positionA!.eci.x,
-                    y: -positionA!.eci.y,
-                    z: -positionA!.eci.z,
-                  }}
-                />
-                <div className="absolute top-1 left-2 text-[11px] text-gray-200 bg-black/60 px-2 py-0.5 rounded pointer-events-none">
-                  N ↑
-                </div>
-                <div className="absolute bottom-1 right-2 text-[11px] text-gray-200 bg-black/60 px-2 py-0.5 rounded pointer-events-none">
-                  FoV {(computedFov * 60).toFixed(2)}′ / {formatSpan(displaySpanM)}
-                </div>
-              </div>
-            );
-          })()}
-          <div className="bg-gray-800/70 border border-gray-700 rounded p-2 text-xs text-gray-200 space-y-1">
-            <div className="text-gray-300">Camera</div>
-            <div className="flex flex-wrap gap-3">
-              <label className="flex items-center gap-1">
-                <input type="checkbox" checked={showLos} onChange={e => setShowLos(e.target.checked)} />
-                LoS
-              </label>
-              <label className="flex items-center gap-1">
-                <input type="checkbox" checked={showSunLine} onChange={e => setShowSunLine(e.target.checked)} />
-                Sun line
-              </label>
-              <label className="flex items-center gap-1">
-                <input type="checkbox" checked={showTrack} onChange={e => setShowTrack(e.target.checked)} />
-                Orbit track
-              </label>
-              <label className="flex items-center gap-1">
-                <input type="checkbox" checked={showVelocity} onChange={e => setShowVelocity(e.target.checked)} />
-                Velocity
-              </label>
+          {/* 3D Canvas */}
+          <div className="h-56 bg-black rounded overflow-hidden mb-3 relative">
+            <RelativeViewCanvas
+              rel={derived.rel}
+              scale={derived.scale}
+              sunEci={derived.sunEci}
+              fov={displayFov}
+              sunFromB={derived.sunFromB}
+              velB={derived.velB}
+              trackPoints={trackLinePoints}
+              showLos={showLos}
+              showSunLine={showSunLine}
+              showTrack={showTrack}
+              showVelocity={showVelocity}
+              earthVisible={earthVisible}
+              earthPosition={{
+                x: -positionA!.eci.x,
+                y: -positionA!.eci.y,
+                z: -positionA!.eci.z,
+              }}
+            />
+            <div className="absolute top-1.5 left-2 text-[10px] text-gray-300 bg-black/70 px-1.5 py-0.5 rounded pointer-events-none font-mono">
+              N ↑
+            </div>
+            <div className="absolute bottom-1.5 right-2 text-[10px] text-gray-300 bg-black/70 px-1.5 py-0.5 rounded pointer-events-none font-mono">
+              {formatFov(displayFov)} · {formatSpan(displaySpanM)}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-gray-900/70 p-2 rounded">
-              <div className="text-gray-400">Range</div>
+
+          {/* Display Options */}
+          <div className="flex flex-wrap gap-3 mb-3 text-[11px]">
+            <label className="flex items-center gap-1.5 text-gray-300 cursor-pointer hover:text-white transition-colors">
+              <input type="checkbox" checked={showLos} onChange={e => setShowLos(e.target.checked)} className="accent-blue-500" />
+              LoS
+            </label>
+            <label className="flex items-center gap-1.5 text-gray-300 cursor-pointer hover:text-white transition-colors">
+              <input type="checkbox" checked={showSunLine} onChange={e => setShowSunLine(e.target.checked)} className="accent-blue-500" />
+              Sun
+            </label>
+            <label className="flex items-center gap-1.5 text-gray-300 cursor-pointer hover:text-white transition-colors">
+              <input type="checkbox" checked={showTrack} onChange={e => setShowTrack(e.target.checked)} className="accent-blue-500" />
+              Track
+            </label>
+            <label className="flex items-center gap-1.5 text-gray-300 cursor-pointer hover:text-white transition-colors">
+              <input type="checkbox" checked={showVelocity} onChange={e => setShowVelocity(e.target.checked)} className="accent-blue-500" />
+              Velocity
+            </label>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-2 text-[11px]">
+            <div className="bg-gray-800/50 px-2 py-1.5 rounded">
+              <div className="text-gray-500 text-[10px]">Range</div>
               <div className="text-white font-mono">{derived.rangeKm.toFixed(1)} km</div>
             </div>
-            <div className="bg-gray-900/70 p-2 rounded">
-              <div className="text-gray-400">Phase angle</div>
+            <div className="bg-gray-800/50 px-2 py-1.5 rounded">
+              <div className="text-gray-500 text-[10px]">Phase</div>
               <div className="text-white font-mono">{derived.phaseAngleDeg.toFixed(1)}°</div>
             </div>
-            <div className="bg-gray-900/70 p-2 rounded col-span-2">
-              <div className="text-gray-400">FoV</div>
-              <div className="text-white font-mono">
-                {autoFit ? `${(displayFov * 60).toFixed(2)}′ (auto)` : `${(displayFov * 60).toFixed(2)}′`}
-                {` (span ${formatSpan(displaySpanM)})`}
-              </div>
+            <div className="bg-gray-800/50 px-2 py-1.5 rounded">
+              <div className="text-gray-500 text-[10px]">Span</div>
+              <div className="text-white font-mono">{formatSpan(displaySpanM)}</div>
             </div>
           </div>
         </>
