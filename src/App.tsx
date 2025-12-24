@@ -533,40 +533,38 @@ export default function App() {
               showMainLos={pairEnabled && showMainLos}
               showMainSunLine={pairEnabled && showMainSunLine}
             />
-            <div className="absolute left-3 right-3 bottom-3 flex flex-wrap gap-3 items-center text-xs text-gray-200 bg-black/60 rounded-md px-3 py-2 border border-gray-700">
-              <label className="flex items-center gap-1">
-                <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} />
+            <div className="absolute left-3 right-3 bottom-3 flex flex-wrap gap-4 items-center text-[11px] text-gray-300 bg-black/70 backdrop-blur-sm rounded px-3 py-1.5">
+              <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
+                <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="accent-blue-500" />
                 Grid
               </label>
-              <label className="flex items-center gap-1">
-                <input type="checkbox" checked={showTerminator} onChange={e => setShowTerminator(e.target.checked)} />
+              <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
+                <input type="checkbox" checked={showTerminator} onChange={e => setShowTerminator(e.target.checked)} className="accent-blue-500" />
                 Terminator
               </label>
-              <label className="flex items-center gap-1">
-                <input type="checkbox" checked={showAntiSolar} onChange={e => setShowAntiSolar(e.target.checked)} />
+              <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
+                <input type="checkbox" checked={showAntiSolar} onChange={e => setShowAntiSolar(e.target.checked)} className="accent-blue-500" />
                 Anti-solar
               </label>
-              <label className="flex items-center gap-1">
+              <label className={`flex items-center gap-1.5 transition-colors ${pairEnabled ? 'cursor-pointer hover:text-white' : 'opacity-50 cursor-not-allowed'}`}>
                 <input
                   type="checkbox"
                   checked={pairEnabled && showMainLos}
                   disabled={!pairEnabled}
                   onChange={e => setShowMainLos(e.target.checked)}
+                  className="accent-blue-500"
                 />
                 LoS A→B
               </label>
-              <label className="flex items-center gap-1">
+              <label className={`flex items-center gap-1.5 transition-colors ${pairEnabled ? 'cursor-pointer hover:text-white' : 'opacity-50 cursor-not-allowed'}`}>
                 <input
                   type="checkbox"
                   checked={pairEnabled && showMainSunLine}
                   disabled={!pairEnabled}
                   onChange={e => setShowMainSunLine(e.target.checked)}
+                  className="accent-blue-500"
                 />
                 Sun line at B
-              </label>
-              <label className="flex items-center gap-1">
-                <input type="checkbox" checked={!relativeCollapsed} onChange={e => setRelativeCollapsed(!e.target.checked)} />
-                Relative view panel
               </label>
             </div>
           </div>
