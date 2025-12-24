@@ -21,6 +21,32 @@
   background: #6b7280;
 }
 
+/* Sidebar scrollbar: hidden by default, visible on hover */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.sidebar-scroll:hover {
+  scrollbar-color: #4b5563 transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+.sidebar-scroll:hover::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* Range slider styling */
 input[type='range'] {
   -webkit-appearance: none;

@@ -356,7 +356,7 @@ export default function App() {
 
       {/* Left sidebar */}
       <div
-        className={`w-[20rem] flex-shrink-0 overflow-y-auto border-r border-gray-700 transition-all duration-300 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent hover:scrollbar-thumb-gray-600 ${
+        className={`w-[20rem] flex-shrink-0 overflow-y-auto border-r border-gray-700 transition-all duration-300 sidebar-scroll ${
           panelCollapsed ? '-ml-[20rem]' : 'ml-0'
         }`}
       >
