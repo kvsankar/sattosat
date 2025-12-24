@@ -9,7 +9,7 @@ async function fixScreenshots() {
   const browser = await chromium.launch();
   const context = await browser.newContext({
     viewport: { width: 1920, height: 1080 },
-    deviceScaleFactor: 2,
+    deviceScaleFactor: 1,  // 1080p resolution
   });
   const page = await context.newPage();
 
@@ -34,14 +34,14 @@ async function fixScreenshots() {
   if (await orbitalText.isVisible()) {
     const orbitalBox = await orbitalText.boundingBox();
     if (orbitalBox && sidebarBox) {
-      // Capture from the header down ~400px to get the full panel
+      // Capture from the header down to include TLE Epoch row fully
       await page.screenshot({
         path: path.join(SCREENSHOTS_DIR, 'orbital-parameters.png'),
         clip: {
           x: sidebarBox.x,
-          y: orbitalBox.y - 15,  // Start just above header
+          y: orbitalBox.y - 10,  // Start just above header
           width: sidebarBox.width,
-          height: 480  // Enough to show all orbital elements
+          height: 580  // Include all elements through TLE Epoch fully
         }
       });
       console.log('   Orbital Parameters captured');
