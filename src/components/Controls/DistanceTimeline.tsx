@@ -1,27 +1,29 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import type { DistanceSample } from '../../lib/conjunctions';
 
 interface DistanceTimelineProps {
   samples: DistanceSample[];
   currentTime: Date;
   anchorTime: Date;
-  rangeDays: number;
   onTimeChange: (time: Date) => void;
   height?: number;
-  onCollapse?: () => void;
   currentDistanceKm?: number;
+}
+
+interface HoverInfo {
+  time: Date;
+  distance: number;
 }
 
 export function DistanceTimeline({
   samples,
   currentTime,
   anchorTime,
-  rangeDays,
   onTimeChange,
   height = 190,
-  onCollapse,
   currentDistanceKm,
 }: DistanceTimelineProps) {
+  const [hover, setHover] = useState<HoverInfo | null>(null);
   const stats = useMemo(() => {
     if (!samples.length) return null;
     const distances = samples.map(s => s.distance);
@@ -86,7 +88,6 @@ export function DistanceTimeline({
   const start = stats?.start ?? 0;
   const end = stats?.end ?? 1;
   const scaleX = (t: number) => paddingLeft + ((t - start) / (end - start || 1)) * innerW;
-  const spanLabel = `${-rangeDays}d to +${rangeDays}d`;
   const currentX = scaleX(currentTime.getTime());
   const anchorX = scaleX(anchorTime.getTime());
   const currentY = (() => {
@@ -104,10 +105,39 @@ export function DistanceTimeline({
     return padding.top + innerH - ((dist - min) / span) * innerH;
   })();
 
-  const formatTime = (t: number) => {
+  const formatAxisLabel = (t: number) => {
     const d = new Date(t);
-    return d.toISOString().slice(5, 16).replace('T', ' ');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
   };
+
+  const formatHoverTime = (d: Date) => {
+    return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+  };
+
+  const handleMouseMove = useCallback(
+    (event: React.MouseEvent<SVGSVGElement>) => {
+      if (!stats || !samples.length) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const ratio = Math.min(
+        1,
+        Math.max(0, (event.clientX - rect.left - paddingLeft) / (rect.width - paddingLeft - paddingRight))
+      );
+      const targetMs = stats.start + ratio * (stats.end - stats.start);
+      // Find closest sample
+      const closest = samples.reduce((best, s) => {
+        const diff = Math.abs(s.time.getTime() - targetMs);
+        const bestDiff = Math.abs(best.time.getTime() - targetMs);
+        return diff < bestDiff ? s : best;
+      });
+      setHover({ time: new Date(targetMs), distance: closest.distance });
+    },
+    [stats, samples, paddingLeft, paddingRight]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setHover(null);
+  }, []);
 
   const xTicks = (() => {
     const ticks: number[] = [start, anchorTime.getTime(), end];
@@ -138,34 +168,20 @@ export function DistanceTimeline({
   }, [min, max]);
 
   return (
-    <div className="bg-gray-900/95 border border-gray-700 rounded-lg p-3 shadow-lg h-full relative">
-      {onCollapse && (
-        <button
-          onClick={onCollapse}
-          className="absolute top-2 right-2 text-gray-300 hover:text-white text-xs bg-gray-800/80 border border-gray-700 rounded px-2 py-0.5"
-          title="Collapse timeline"
-        >
-          ↓
-        </button>
-      )}
+    <div className="h-full relative">
       {!stats ? (
-        <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-          Select a profile or choose a couple of satellites to view the distance timeline.
+        <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
+          Select satellites to view distance
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between text-xs text-gray-200 mb-1 pr-8">
-            <div className="font-semibold">Distance timeline ({spanLabel})</div>
-            <div className="flex flex-col items-end text-gray-300">
-              <span>min {min.toFixed(1)} km · max {max.toFixed(1)} km</span>
-              {typeof currentDistanceKm === 'number' && (
-                <span className="text-[11px] text-gray-400">
-                  Current {currentDistanceKm.toFixed(1)} km @ {formatTime(currentTime.getTime())}
-                </span>
-              )}
-            </div>
-          </div>
-          <svg viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} className="w-full h-full cursor-crosshair" onClick={handleClick}>
+        <svg
+          viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+          className="w-full h-full cursor-crosshair"
+          onClick={handleClick}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
             <defs>
               <linearGradient id="distFill" x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
@@ -200,7 +216,6 @@ export function DistanceTimeline({
             {/* Grid + ticks */}
             {xTicks.map((t, idx) => {
               const x = scaleX(t);
-              const label = formatTime(t);
               return (
                 <g key={`x-${idx}`}>
                   <line
@@ -218,7 +233,7 @@ export function DistanceTimeline({
                     fill="#9ca3af"
                     textAnchor="middle"
                   >
-                    {label}
+                    {formatAxisLabel(t)}
                   </text>
                 </g>
               );
@@ -247,19 +262,15 @@ export function DistanceTimeline({
             {/* Current time marker */}
             <line x1={currentX} x2={currentX} y1={padding.top} y2={viewBoxHeight - padding.bottom} stroke="#60a5fa" strokeWidth="2" />
             {currentY !== null && (
-              <g>
-                <circle cx={currentX} cy={currentY} r={3} fill="#60a5fa" />
-                <text x={currentX + 6} y={currentY - 6} fontSize="10" fill="#bfdbfe">
-                  {typeof currentDistanceKm === 'number' ? currentDistanceKm.toFixed(1) : ''} km
-                </text>
-              </g>
+              <circle cx={currentX} cy={currentY} r={3} fill="#60a5fa" />
             )}
           </svg>
-          <div className="flex justify-between text-[11px] text-gray-400 mt-1">
-            <span>-{rangeDays}d</span>
-            <span>Anchor</span>
-            <span>+{rangeDays}d</span>
+        {/* Hover info */}
+        {hover && (
+          <div className="absolute bottom-1 right-2 text-[10px] font-mono text-gray-400 bg-gray-900/80 px-1.5 py-0.5 rounded">
+            {formatHoverTime(hover.time)} · {hover.distance.toFixed(1)} km
           </div>
+        )}
         </>
       )}
     </div>

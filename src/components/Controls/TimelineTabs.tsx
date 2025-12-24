@@ -29,15 +29,15 @@ interface ParameterGraphProps {
   height: number;
 }
 
-const METRICS: Array<{ id: MetricId; label: string; unit: string }> = [
-  { id: 'semiMajorAxis', label: 'Semi-major axis', unit: 'km' },
-  { id: 'period', label: 'Period', unit: 'min' },
-  { id: 'raan', label: 'RAAN', unit: '°' },
-  { id: 'argOfPerigee', label: 'AoP', unit: '°' },
-  { id: 'apogee', label: 'Apogee', unit: 'km' },
-  { id: 'perigee', label: 'Perigee', unit: 'km' },
-  { id: 'eccentricity', label: 'Eccentricity', unit: '' },
-  { id: 'inclination', label: 'Inclination', unit: '°' },
+const METRICS: Array<{ id: MetricId; label: string; shortLabel: string; unit: string }> = [
+  { id: 'semiMajorAxis', label: 'Semi-major axis', shortLabel: 'SMA', unit: 'km' },
+  { id: 'period', label: 'Period', shortLabel: 'Period', unit: 'min' },
+  { id: 'raan', label: 'RAAN', shortLabel: 'RAAN', unit: '°' },
+  { id: 'argOfPerigee', label: 'Arg of Perigee', shortLabel: 'AoP', unit: '°' },
+  { id: 'apogee', label: 'Apogee', shortLabel: 'Apo', unit: 'km' },
+  { id: 'perigee', label: 'Perigee', shortLabel: 'Peri', unit: 'km' },
+  { id: 'eccentricity', label: 'Eccentricity', shortLabel: 'Ecc', unit: '' },
+  { id: 'inclination', label: 'Inclination', shortLabel: 'Inc', unit: '°' },
 ];
 
 export function TimelineTabs({
@@ -53,38 +53,68 @@ export function TimelineTabs({
   tleSeriesB,
 }: TimelineTabsProps) {
   const [activeTab, setActiveTab] = useState<MetricId | 'distance'>('distance');
+  const activeMetric = METRICS.find(m => m.id === activeTab);
 
   return (
     <div
-      className="bg-gray-900/95 border border-gray-700 rounded-lg shadow-lg p-2 h-full w-full flex flex-col relative"
+      className="bg-gray-900 border border-gray-700 rounded-lg h-full w-full flex flex-col"
       style={{ minWidth: 320 }}
     >
-      {onCollapse && (
-        <button
-          onClick={onCollapse}
-          className="absolute top-2 right-2 text-gray-300 hover:text-white text-xs bg-gray-800/80 border border-gray-700 rounded px-2 py-0.5"
-          title="Collapse timeline"
-        >
-          ↓
-        </button>
-      )}
-
-      <div className="flex flex-wrap gap-1 mb-2 pr-6">
-        <TabButton id="distance" active={activeTab} onSelect={setActiveTab} label="Relative distance" />
-        {METRICS.map(m => (
-          <TabButton key={m.id} id={m.id} active={activeTab} onSelect={setActiveTab} label={m.label} />
-        ))}
+      {/* Header bar with tabs and collapse */}
+      <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-800">
+        <div className="flex items-center gap-0.5">
+          <TabButton
+            id="distance"
+            active={activeTab}
+            onSelect={setActiveTab}
+            label="Distance"
+          />
+          <span className="text-gray-600 mx-1">|</span>
+          {METRICS.map(m => (
+            <TabButton
+              key={m.id}
+              id={m.id}
+              active={activeTab}
+              onSelect={setActiveTab}
+              label={m.shortLabel}
+              title={m.label}
+            />
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          {activeTab === 'distance' && typeof currentDistanceKm === 'number' && (
+            <span className="text-[11px] text-gray-400 font-mono">
+              {currentDistanceKm.toFixed(1)} km
+            </span>
+          )}
+          {activeMetric && (
+            <span className="text-[11px] text-gray-400">
+              {activeMetric.label} ({activeMetric.unit || '–'})
+            </span>
+          )}
+          {onCollapse && (
+            <button
+              onClick={onCollapse}
+              className="text-gray-500 hover:text-white p-1"
+              title="Collapse panel"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="flex-1 min-h-0">
+      {/* Graph area */}
+      <div className="flex-1 min-h-0 p-2">
         {activeTab === 'distance' ? (
           <DistanceTimeline
             samples={distanceSamples}
             currentTime={currentTime}
             anchorTime={anchorTime}
-            rangeDays={rangeDays}
             onTimeChange={onTimeChange}
-            height={height - 20}
+            height={height - 40}
             currentDistanceKm={currentDistanceKm}
           />
         ) : (
@@ -96,7 +126,7 @@ export function TimelineTabs({
             anchorTime={anchorTime}
             rangeDays={rangeDays}
             onTimeChange={onTimeChange}
-            height={height - 20}
+            height={height - 40}
           />
         )}
       </div>
@@ -109,20 +139,23 @@ function TabButton({
   active,
   onSelect,
   label,
+  title,
 }: {
   id: MetricId | 'distance';
   active: MetricId | 'distance';
   onSelect: (id: MetricId | 'distance') => void;
   label: string;
+  title?: string;
 }) {
   const isActive = active === id;
   return (
     <button
       onClick={() => onSelect(id)}
-      className={`px-2 py-1 rounded text-[11px] border ${
+      title={title}
+      className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
         isActive
-          ? 'bg-blue-600 text-white border-blue-500'
-          : 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700'
+          ? 'bg-blue-600 text-white'
+          : 'text-gray-400 hover:text-white hover:bg-gray-800'
       }`}
     >
       {label}
@@ -140,6 +173,7 @@ function ParameterGraph({
   onTimeChange,
   height,
 }: ParameterGraphProps) {
+  const [hover, setHover] = useState<{ time: Date; valueA?: number; valueB?: number } | null>(null);
   const metricInfo = METRICS.find(m => m.id === metric)!;
   const viewBoxWidth = 1400;
   const viewBoxHeight = Math.max(140, height - 20);
@@ -247,9 +281,14 @@ function ParameterGraph({
       .map((p, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(p.x).toFixed(2)} ${scaleY(p.y).toFixed(2)}`)
       .join(' ');
 
-  const formatTimeLabel = (ms: number) => {
+  const formatAxisLabel = (ms: number) => {
     const d = new Date(ms);
-    return d.toISOString().slice(5, 16).replace('T', ' ');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
+  };
+
+  const formatHoverTime = (d: Date) => {
+    return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
   };
 
   const onClick = (event: React.MouseEvent<SVGSVGElement>) => {
@@ -262,28 +301,46 @@ function ParameterGraph({
     onTimeChange(new Date(target));
   };
 
+  const onMouseMove = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(
+      1,
+      Math.max(0, (event.clientX - rect.left - paddingLeft) / (rect.width - paddingLeft - paddingRight))
+    );
+    const targetMs = xMin + ratio * (xMax - xMin || 1);
+    // Find closest points
+    const closestA = pointsA.length ? pointsA.reduce((best, p) =>
+      Math.abs(p.x - targetMs) < Math.abs(best.x - targetMs) ? p : best
+    ) : null;
+    const closestB = pointsB.length ? pointsB.reduce((best, p) =>
+      Math.abs(p.x - targetMs) < Math.abs(best.x - targetMs) ? p : best
+    ) : null;
+    setHover({
+      time: new Date(targetMs),
+      valueA: closestA?.y,
+      valueB: closestB?.y,
+    });
+  }, [paddingLeft, paddingRight, xMin, xMax, pointsA, pointsB]);
+
+  const onMouseLeave = useCallback(() => {
+    setHover(null);
+  }, []);
+
   return (
-    <div className="bg-gray-900/95 border border-gray-700 rounded-lg p-3 h-full">
+    <div className="h-full relative">
       {!hasData ? (
-        <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-          No TLE epochs in range ±{rangeDays}d around anchor.
+        <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
+          No TLE epochs in range ±{rangeDays}d
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between text-xs text-gray-200 mb-1 pr-6">
-            <div className="font-semibold">
-              {metricInfo.label} ({metricInfo.unit || 'unitless'})
-            </div>
-            <div className="flex items-center gap-3 text-[11px] text-gray-300">
-              <span className="flex items-center gap-1"><span className="w-3 h-1 bg-blue-500 inline-block" /> A</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-1 bg-red-500 inline-block" /> B</span>
-            </div>
-          </div>
-          <svg
-            viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-            className="w-full h-full cursor-crosshair"
-            onClick={onClick}
-          >
+        <svg
+          viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+          className="w-full h-full cursor-crosshair"
+          onClick={onClick}
+          onMouseMove={onMouseMove}
+          onMouseLeave={onMouseLeave}
+        >
             {/* Axes */}
             <line
               x1={paddingLeft}
@@ -309,7 +366,7 @@ function ParameterGraph({
                 <g key={`x-${idx}`}>
                   <line x1={x} x2={x} y1={paddingTop} y2={viewBoxHeight - paddingBottom} stroke="#1f2937" strokeWidth="0.5" />
                   <text x={x} y={viewBoxHeight - paddingBottom + 12} fontSize="10" fill="#9ca3af" textAnchor="middle">
-                    {formatTimeLabel(t)}
+                    {formatAxisLabel(t)}
                   </text>
                 </g>
               );
@@ -364,6 +421,11 @@ function ParameterGraph({
               strokeDasharray="4 4"
             />
           </svg>
+        {hover && (
+          <div className="absolute bottom-1 right-2 text-[10px] font-mono text-gray-400 bg-gray-900/80 px-1.5 py-0.5 rounded">
+            {formatHoverTime(hover.time)} · A: {hover.valueA?.toFixed(2) ?? '–'} · B: {hover.valueB?.toFixed(2) ?? '–'} {metricInfo.unit}
+          </div>
+        )}
         </>
       )}
     </div>
