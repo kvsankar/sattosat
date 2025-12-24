@@ -514,16 +514,11 @@ function ParameterGraph({
                     strokeWidth="1"
                     strokeDasharray="2 2"
                   />
-                  {hover.valueA !== undefined && (
-                    <circle cx={hoverX} cy={scaleY(hover.valueA)} r={5} fill="#3b82f6" stroke="#fff" strokeWidth="1.5" />
-                  )}
-                  {hover.valueB !== undefined && (
-                    <circle cx={hoverX} cy={scaleY(hover.valueB)} r={5} fill="#ef4444" stroke="#fff" strokeWidth="1.5" />
-                  )}
 
                   {/* Floating callout for series A */}
                   {hover.nearPointA && (
                     <g>
+                      <circle cx={hover.nearPointA.x} cy={hover.nearPointA.y} r={5} fill="#3b82f6" stroke="#fff" strokeWidth="1.5" />
                       <rect
                         x={hover.nearPointA.x + 8}
                         y={hover.nearPointA.y + 8}
@@ -561,6 +556,7 @@ function ParameterGraph({
                   {/* Floating callout for series B */}
                   {hover.nearPointB && (
                     <g>
+                      <circle cx={hover.nearPointB.x} cy={hover.nearPointB.y} r={5} fill="#ef4444" stroke="#fff" strokeWidth="1.5" />
                       <rect
                         x={hover.nearPointB.x + 8}
                         y={hover.nearPointB.y + 8}
