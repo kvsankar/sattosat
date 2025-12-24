@@ -505,7 +505,7 @@ export default function App() {
 
       {/* Main 3D view and timelines */}
       <div className="flex-1 relative p-4">
-        <div className="grid h-full w-full grid-cols-[minmax(0,1fr)_384px] grid-rows-[minmax(0,1fr)_auto] gap-3">
+        <div className={`grid h-full w-full grid-rows-[minmax(0,1fr)_auto] gap-3 ${relativeCollapsed ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-[minmax(0,1fr)_384px]'}`}>
           <div className="relative rounded-lg overflow-hidden bg-black/40">
             <Scene
               satelliteA={
@@ -569,41 +569,30 @@ export default function App() {
             </div>
           </div>
 
-          <div className="relative">
+          <div className="relative flex justify-end">
             {relativeCollapsed ? (
               <button
                 onClick={() => setRelativeCollapsed(false)}
-                className="bg-gray-900 border border-gray-700 rounded-lg flex items-center gap-2 px-3 py-2 text-left group hover:border-gray-600 transition-colors"
+                className="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded text-sm flex items-center justify-center border border-gray-700"
+                title="Show A→B View"
               >
-                <svg
-                  className="w-3 h-3 text-gray-500 group-hover:text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-                <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide group-hover:text-gray-300">
-                  A→B View
-                </span>
+                ◂
               </button>
             ) : (
               <div className="w-full h-full max-w-[420px]">
                 <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
                   {/* Header */}
                   <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-800">
+                    <button
+                      onClick={() => setRelativeCollapsed(true)}
+                      className="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded text-sm flex items-center justify-center border border-gray-700 flex-shrink-0"
+                      title="Hide panel"
+                    >
+                      ▸
+                    </button>
                     <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">
                       A→B View
                     </span>
-                    <button
-                      onClick={() => setRelativeCollapsed(true)}
-                      className="text-gray-500 hover:text-white p-1 transition-colors"
-                      title="Collapse panel"
-                    >
-                      <svg className="w-3 h-3 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
                   </div>
                   {/* Content */}
                   {pairEnabled ? (
