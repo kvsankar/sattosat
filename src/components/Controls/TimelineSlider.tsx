@@ -148,7 +148,6 @@ export function TimelineSlider({
 
   return (
     <div className="bg-gray-800 p-3 rounded-lg">
-      <div className="text-sm text-gray-400 mb-1 text-center">Timeline</div>
       <div className="flex flex-wrap items-center justify-center gap-1.5 mb-2">
         {onAnchor && (
           <button

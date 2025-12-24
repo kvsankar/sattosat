@@ -26,9 +26,7 @@ export function OrbitalParams({
   }
 
   return (
-    <div className="bg-gray-800 p-4 rounded-lg">
-      <h3 className="text-white font-medium mb-3">Orbital Parameters</h3>
-
+    <div className="bg-gray-800 p-3 rounded-lg">
       {/* Current Distance */}
       {currentDistance !== null && (
         <div className="mb-3 p-2.5 bg-gray-900 rounded-lg">

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Scene } from './components/Globe/Scene';
 import { SatelliteSelector } from './components/Controls/SatelliteSelector';
 import { TimelineSlider } from './components/Controls/TimelineSlider';
+import { CollapsibleSection } from './components/Controls/CollapsibleSection';
 import { OrbitalParams } from './components/Panels/OrbitalParams';
 import { ConjunctionPanel } from './components/Panels/ConjunctionPanel';
 import { RelativeViewPanel } from './components/Panels/RelativeViewPanel';
@@ -19,17 +20,6 @@ type SortMode = 'date' | 'distance';
 const SEARCH_RANGE_DAYS = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TIMELINE_HEIGHT = 200;      // px for bottom timeline and control panel alignment
-
-function formatCacheAge(timestamp: number): string {
-  const ageMs = Date.now() - timestamp;
-  const ageMinutes = Math.floor(ageMs / (1000 * 60));
-  const ageHours = Math.floor(ageMs / (1000 * 60 * 60));
-
-  if (ageMinutes < 1) return 'just now';
-  if (ageMinutes < 60) return `${ageMinutes}m ago`;
-  if (ageHours < 24) return `${ageHours}h ago`;
-  return `${Math.floor(ageHours / 24)}d ago`;
-}
 
 function filterAvailableTlesByAnchor(
   entries: Array<{ epoch: Date; cacheTimestamp: number }>,
@@ -83,7 +73,6 @@ export default function App() {
   const [showMainSunLine, setShowMainSunLine] = useState(true);
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [relativeCollapsed, setRelativeCollapsed] = useState(false);
-  const [sidebarTopCollapsed, setSidebarTopCollapsed] = useState(false);
   const hasAutoLoadedProfile = useRef(false);
 
   // Load satellite catalog
@@ -377,116 +366,93 @@ export default function App() {
           </button>
         </div>
 
-        <div className="px-2.5 py-2">
+        <div className="px-2.5 py-2 space-y-1">
 
-        <div className="mb-3 border border-gray-700 rounded-md overflow-hidden">
-          <button
-            onClick={() => setSidebarTopCollapsed(!sidebarTopCollapsed)}
-            className="w-full flex items-center justify-between bg-gray-850 px-2 py-1.5 text-xs text-gray-200 hover:text-white"
-          >
-            <span className="font-semibold flex items-center gap-2">
-              Selections
+        {/* Satellite Selection (includes Profile) */}
+        <CollapsibleSection
+          title="Satellites"
+          badge={catalogCacheInfo ? catalogCacheInfo.count.toLocaleString() : undefined}
+        >
+          {/* Profile Selection */}
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-gray-500">Profile</span>
               {selectedProfileName && (
-                <span className="text-gray-500 text-[10px] font-normal">
-                  {selectedProfileName}
+                <span className="text-[10px] text-gray-500">
+                  {anchorTime.toISOString().slice(0, 10)}
                 </span>
               )}
-            </span>
-            <span className="text-gray-400">{sidebarTopCollapsed ? '▸' : '▾'}</span>
-          </button>
-          {!sidebarTopCollapsed && (
-            <div className="px-2.5 py-2 bg-gray-900">
-              {/* Profiles */}
-              <div className="mb-2 space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-gray-300">
-                  <span>Profiles</span>
-                  <span className="text-gray-500 text-[10px]">sets satellites + now</span>
-                </div>
-                <select
-                  value={selectedProfileName ?? ''}
-                  onChange={(e) => handleSelectProfile(e.target.value)}
-                  className="w-full bg-gray-900 text-white rounded px-2 py-1 border border-gray-700 text-[12px] leading-tight h-7"
-                >
-                  <option value="">-- None --</option>
-                  {profiles.map(p => (
-                    <option key={p.name} value={p.name}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                {selectedProfileName && (
-                  <div className="text-[11px] text-gray-500">
-                    Anchor: {anchorTime.toISOString().replace('T', ' ').slice(0, 19)} UTC
-                  </div>
-                )}
-              </div>
+            </div>
+            <select
+              value={selectedProfileName ?? ''}
+              onChange={(e) => handleSelectProfile(e.target.value)}
+              className="w-full bg-gray-800 text-white rounded px-2 py-1.5 border border-gray-700 text-[12px] leading-tight"
+            >
+              <option value="">-- None --</option>
+              {profiles.map(p => (
+                <option key={p.name} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              {/* Catalog cache info */}
-              <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1.5">
-                <span>
-                  {catalogCacheInfo
-                    ? `${catalogCacheInfo.count.toLocaleString()} sats (cached ${formatCacheAge(catalogCacheInfo.timestamp)})`
-                    : catalogLoading ? 'Loading catalog...' : 'No catalog loaded'
-                  }
-                </span>
-                <button
-                  onClick={refreshCatalog}
-                  disabled={catalogLoading}
-                  className="text-blue-400 hover:text-blue-300 disabled:text-gray-600"
-                  title="Refresh satellite catalog"
-                >
-                  ↻
-                </button>
-              </div>
+          <div className="flex items-center justify-end gap-1 text-[10px] text-gray-500 mb-1.5">
+            <button
+              onClick={refreshCatalog}
+              disabled={catalogLoading}
+              className="text-blue-400 hover:text-blue-300 disabled:text-gray-600"
+              title="Refresh satellite catalog"
+            >
+              ↻ Refresh catalog
+            </button>
+          </div>
 
-              {catalogError && (
-                <div className="bg-red-900/50 border border-red-600 text-red-200 p-3 rounded-lg mb-3 text-sm">
-                  {catalogError}
-                </div>
-              )}
-
-              {/* Satellite Selectors */}
-              <div className="space-y-1">
-                <SatelliteSelector
-                  label="Sat A"
-                  color="#3b82f6"
-                  catalog={catalog}
-                  selectedId={selectedIdA}
-                  onSelect={handleSelectA}
-                  loading={catalogLoading || loadingA}
-                  disabled={catalogLoading}
-                  cacheInfo={cacheInfoA}
-                  onRefresh={refreshTleA}
-                  availableTles={filteredAvailableTlesA}
-                  selectedTleEpoch={preferredEpochA}
-                  onSelectTleEpoch={setPreferredEpochA}
-                  onPasteTles={handlePasteTlesA}
-                  historicalLoading={historicalLoadingA}
-                />
-
-                <SatelliteSelector
-                  label="Sat B"
-                  color="#ef4444"
-                  catalog={catalog}
-                  selectedId={selectedIdB}
-                  onSelect={handleSelectB}
-                  loading={catalogLoading || loadingB}
-                  disabled={catalogLoading}
-                  cacheInfo={cacheInfoB}
-                  onRefresh={refreshTleB}
-                  availableTles={filteredAvailableTlesB}
-                  selectedTleEpoch={preferredEpochB}
-                  onSelectTleEpoch={setPreferredEpochB}
-                  onPasteTles={handlePasteTlesB}
-                  historicalLoading={historicalLoadingB}
-                />
-              </div>
+          {catalogError && (
+            <div className="bg-red-900/50 border border-red-600 text-red-200 p-2 rounded text-[11px] mb-2">
+              {catalogError}
             </div>
           )}
-        </div>
+
+          <div className="space-y-1.5">
+            <SatelliteSelector
+              label="Sat A"
+              color="#3b82f6"
+              catalog={catalog}
+              selectedId={selectedIdA}
+              onSelect={handleSelectA}
+              loading={catalogLoading || loadingA}
+              disabled={catalogLoading}
+              cacheInfo={cacheInfoA}
+              onRefresh={refreshTleA}
+              availableTles={filteredAvailableTlesA}
+              selectedTleEpoch={preferredEpochA}
+              onSelectTleEpoch={setPreferredEpochA}
+              onPasteTles={handlePasteTlesA}
+              historicalLoading={historicalLoadingA}
+            />
+
+            <SatelliteSelector
+              label="Sat B"
+              color="#ef4444"
+              catalog={catalog}
+              selectedId={selectedIdB}
+              onSelect={handleSelectB}
+              loading={catalogLoading || loadingB}
+              disabled={catalogLoading}
+              cacheInfo={cacheInfoB}
+              onRefresh={refreshTleB}
+              availableTles={filteredAvailableTlesB}
+              selectedTleEpoch={preferredEpochB}
+              onSelectTleEpoch={setPreferredEpochB}
+              onPasteTles={handlePasteTlesB}
+              historicalLoading={historicalLoadingB}
+            />
+          </div>
+        </CollapsibleSection>
 
         {/* Timeline Controls */}
-        <div className="mb-5">
+        <CollapsibleSection title="Timeline">
           <TimelineSlider
             key={selectedProfileName ?? 'none'}
             currentTime={currentTime}
@@ -499,11 +465,11 @@ export default function App() {
             disabled={false}
             initialPlaying={false}
           />
-        </div>
+        </CollapsibleSection>
 
         {/* Orbital Parameters */}
-        <div className="mb-5">
-          {pairEnabled ? (
+        {pairEnabled && (
+          <CollapsibleSection title="Orbital Parameters">
             <OrbitalParams
               tleA={displayTleA}
               tleB={displayTleB}
@@ -512,23 +478,21 @@ export default function App() {
               currentDistance={currentDistance}
               relativeVelocity={currentRelativeVelocity}
             />
-          ) : (
-            <div className="bg-gray-800 p-4 rounded-lg text-gray-400 text-sm">
-              Select two satellites to view orbital parameters.
-            </div>
-          )}
-        </div>
+          </CollapsibleSection>
+        )}
 
         {/* Conjunctions */}
         {pairEnabled && tleA && tleB && (
-          <ConjunctionPanel
-            conjunctions={conjunctions}
-            loading={conjunctionsLoading}
-            onJumpToTime={handleJumpToTime}
-            currentTime={currentTime}
-            sortMode={conjunctionSortMode}
-            onSortModeChange={setConjunctionSortMode}
-          />
+          <CollapsibleSection title="Close Approaches" badge={conjunctions.length || undefined}>
+            <ConjunctionPanel
+              conjunctions={conjunctions}
+              loading={conjunctionsLoading}
+              onJumpToTime={handleJumpToTime}
+              currentTime={currentTime}
+              sortMode={conjunctionSortMode}
+              onSortModeChange={setConjunctionSortMode}
+            />
+          </CollapsibleSection>
         )}
 
         {/* Footer */}
