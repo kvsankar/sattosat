@@ -8,6 +8,7 @@ interface DistanceTimelineProps {
   onTimeChange: (time: Date) => void;
   height?: number;
   currentDistanceKm?: number;
+  onExpandClick?: () => void;
 }
 
 interface HoverInfo {
@@ -22,6 +23,7 @@ export function DistanceTimeline({
   onTimeChange,
   height = 190,
   currentDistanceKm,
+  onExpandClick,
 }: DistanceTimelineProps) {
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const stats = useMemo(() => {
@@ -178,6 +180,19 @@ export function DistanceTimeline({
 
   return (
     <div className="h-full relative">
+      {/* Expand button */}
+      {onExpandClick && stats && (
+        <button
+          onClick={onExpandClick}
+          className="absolute top-1 right-1 z-10 w-6 h-6 flex items-center justify-center bg-gray-800/80 hover:bg-gray-700 text-gray-400 hover:text-white rounded text-xs transition-colors"
+          title="Expand to fullscreen"
+          aria-label="Expand distance graph to fullscreen"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+        </button>
+      )}
       {!stats ? (
         <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
           Select satellites to view distance

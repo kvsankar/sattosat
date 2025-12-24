@@ -2,6 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import type { DistanceSample } from '../../lib/conjunctions';
 import type { SatelliteTLE } from '../../types/satellite';
 import { DistanceTimeline } from './DistanceTimeline';
+import { FullscreenDistanceGraph } from './FullscreenDistanceGraph';
 
 type MetricId = 'semiMajorAxis' | 'period' | 'raan' | 'argOfPerigee' | 'apogee' | 'perigee' | 'eccentricity' | 'inclination';
 
@@ -53,6 +54,7 @@ export function TimelineTabs({
   tleSeriesB,
 }: TimelineTabsProps) {
   const [activeTab, setActiveTab] = useState<MetricId | 'distance'>('distance');
+  const [showFullscreen, setShowFullscreen] = useState(false);
   const activeMetric = METRICS.find(m => m.id === activeTab);
 
   return (
@@ -116,6 +118,7 @@ export function TimelineTabs({
             onTimeChange={onTimeChange}
             height={height - 40}
             currentDistanceKm={currentDistanceKm}
+            onExpandClick={() => setShowFullscreen(true)}
           />
         ) : (
           <ParameterGraph
@@ -130,6 +133,18 @@ export function TimelineTabs({
           />
         )}
       </div>
+
+      {/* Fullscreen distance graph modal */}
+      <FullscreenDistanceGraph
+        isOpen={showFullscreen}
+        onClose={() => setShowFullscreen(false)}
+        tlesA={tleSeriesA}
+        tlesB={tleSeriesB}
+        anchorTime={anchorTime}
+        rangeDays={rangeDays}
+        currentTime={currentTime}
+        onTimeChange={onTimeChange}
+      />
     </div>
   );
 }

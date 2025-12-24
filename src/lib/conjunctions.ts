@@ -30,12 +30,15 @@ function buildSatrecCache(tles: SatelliteTLE[]): SatrecEntry[] {
 
 function selectSatrecForTime(entries: SatrecEntry[], time: Date): SatrecEntry | null {
   if (entries.length === 0) return null;
+  // Use the TLE with epoch closest to target time (TLEs are most accurate near their epoch)
+  const targetMs = time.getTime();
   let selected = entries[0]!;
+  let minDiff = Math.abs(selected.tle.epoch.getTime() - targetMs);
   for (const entry of entries) {
-    if (entry.tle.epoch.getTime() <= time.getTime()) {
+    const diff = Math.abs(entry.tle.epoch.getTime() - targetMs);
+    if (diff < minDiff) {
+      minDiff = diff;
       selected = entry;
-    } else {
-      break;
     }
   }
   return selected;
