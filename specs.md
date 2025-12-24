@@ -1,7 +1,7 @@
 # Product Specifications
 
 ## Overview
-- SatOrbitViz visualizes two satellites (“A” and “B”), their orbits, day/night on Earth, and closest approaches over a configurable time window (default ±3 days).
+- SatToSat visualizes two satellites (“A” and “B”), their orbits, day/night on Earth, and closest approaches over a configurable time window (default ±3 days).
 - Supports profiles that pre-load satellites, anchor time, and TLE sets; profile anchor drives timeline/search ranges.
 
 ## Data & TLEs

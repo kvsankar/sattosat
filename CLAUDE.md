@@ -17,7 +17,7 @@ Pre-commit hook runs `npm run lint` automatically via simple-git-hooks.
 
 ## Architecture Overview
 
-**SatOrbitViz** is a satellite orbit visualization and conjunction-finder tool. Users select two satellites, and the app finds close approaches between them over a ±3 day window.
+**SatToSat** is a satellite orbit visualization and conjunction-finder tool. Users select two satellites, and the app finds close approaches between them over a ±3 day window.
 
 ### Data Flow
 

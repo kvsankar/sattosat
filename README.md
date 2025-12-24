@@ -1,8 +1,8 @@
-# SatOrbitViz
+# SatToSat
 
 A satellite orbit visualization and conjunction analysis tool. Select two satellites to visualize their orbits in 3D and find close approaches between them.
 
-![SatOrbitViz Application](screenshots/full-app.png)
+![SatToSat Application](screenshots/full-app.png)
 
 ## Features
 

@@ -154,7 +154,7 @@ export default function App() {
       const found = allTlesA.some(t => t.epoch.toISOString() === preferredEpochA);
       if (!found) {
         console.warn(
-          `[SatOrbitViz] Selected TLE epoch for Sat A (${preferredEpochA}) not found in available TLEs. Resetting to Auto.`
+          `[SatToSat] Selected TLE epoch for Sat A (${preferredEpochA}) not found in available TLEs. Resetting to Auto.`
         );
         setEpochWarning('Sat A: Selected epoch not found. Reset to Auto.');
         setPreferredEpochA(null);
@@ -167,7 +167,7 @@ export default function App() {
       const found = allTlesB.some(t => t.epoch.toISOString() === preferredEpochB);
       if (!found) {
         console.warn(
-          `[SatOrbitViz] Selected TLE epoch for Sat B (${preferredEpochB}) not found in available TLEs. Resetting to Auto.`
+          `[SatToSat] Selected TLE epoch for Sat B (${preferredEpochB}) not found in available TLEs. Resetting to Auto.`
         );
         setEpochWarning('Sat B: Selected epoch not found. Reset to Auto.');
         setPreferredEpochB(null);
@@ -436,7 +436,7 @@ export default function App() {
         {/* Sidebar header with collapse button */}
         <div className="flex items-center justify-between px-2.5 py-2 border-b border-gray-700">
           <div>
-            <h1 className="text-lg font-bold text-white leading-tight">SatOrbitViz</h1>
+            <h1 className="text-lg font-bold text-white leading-tight">SatToSat</h1>
             <p className="text-gray-400 text-xs leading-snug">
               Orbit Visualization & Conjunction Finder
             </p>
