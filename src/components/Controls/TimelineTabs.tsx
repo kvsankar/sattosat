@@ -420,6 +420,30 @@ function ParameterGraph({
               stroke="#fbbf24"
               strokeDasharray="4 4"
             />
+
+            {/* Hover indicator */}
+            {hover && (() => {
+              const hoverX = scaleX(hover.time.getTime());
+              return (
+                <>
+                  <line
+                    x1={hoverX}
+                    x2={hoverX}
+                    y1={paddingTop}
+                    y2={viewBoxHeight - paddingBottom}
+                    stroke="#9ca3af"
+                    strokeWidth="1"
+                    strokeDasharray="2 2"
+                  />
+                  {hover.valueA !== undefined && (
+                    <circle cx={hoverX} cy={scaleY(hover.valueA)} r={5} fill="#3b82f6" stroke="#fff" strokeWidth="1.5" />
+                  )}
+                  {hover.valueB !== undefined && (
+                    <circle cx={hoverX} cy={scaleY(hover.valueB)} r={5} fill="#ef4444" stroke="#fff" strokeWidth="1.5" />
+                  )}
+                </>
+              );
+            })()}
           </svg>
         {hover && (
           <div className="absolute bottom-1 right-2 text-[10px] font-mono text-gray-400 bg-gray-900/80 px-1.5 py-0.5 rounded">

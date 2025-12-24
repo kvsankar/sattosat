@@ -264,6 +264,27 @@ export function DistanceTimeline({
             {currentY !== null && (
               <circle cx={currentX} cy={currentY} r={3} fill="#60a5fa" />
             )}
+
+            {/* Hover indicator */}
+            {hover && (() => {
+              const hoverX = scaleX(hover.time.getTime());
+              const span = Math.max(max - min, 1);
+              const hoverY = padding.top + innerH - ((hover.distance - min) / span) * innerH;
+              return (
+                <>
+                  <line
+                    x1={hoverX}
+                    x2={hoverX}
+                    y1={padding.top}
+                    y2={viewBoxHeight - padding.bottom}
+                    stroke="#9ca3af"
+                    strokeWidth="1"
+                    strokeDasharray="2 2"
+                  />
+                  <circle cx={hoverX} cy={hoverY} r={5} fill="#22c55e" stroke="#fff" strokeWidth="1.5" />
+                </>
+              );
+            })()}
           </svg>
         {/* Hover info */}
         {hover && (
