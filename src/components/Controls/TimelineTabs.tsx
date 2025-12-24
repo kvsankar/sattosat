@@ -177,8 +177,8 @@ function ParameterGraph({
     time: Date;
     valueA?: number;
     valueB?: number;
-    nearPointA?: { idx: number; x: number; y: number; delta?: number };
-    nearPointB?: { idx: number; x: number; y: number; delta?: number };
+    nearPointA?: { idx: number; x: number; y: number; time: Date; value: number; delta?: number };
+    nearPointB?: { idx: number; x: number; y: number; time: Date; value: number; delta?: number };
   } | null>(null);
   const metricInfo = METRICS.find(m => m.id === metric)!;
   const viewBoxWidth = 1400;
@@ -314,6 +314,15 @@ function ParameterGraph({
     return sign + formatValue(n);
   };
 
+  const formatCalloutTime = (d: Date) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[d.getUTCMonth()];
+    const day = d.getUTCDate();
+    const h = d.getUTCHours().toString().padStart(2, '0');
+    const m = d.getUTCMinutes().toString().padStart(2, '0');
+    return `${month} ${day}, ${h}:${m}`;
+  };
+
   const onClick = (event: React.MouseEvent<SVGSVGElement>) => {
     const rect = (event.currentTarget as SVGSVGElement).getBoundingClientRect();
     const ratio = Math.min(
@@ -356,7 +365,7 @@ function ParameterGraph({
     // Check if we're "near" a point (within 5% of the x-range)
     const nearThreshold = (xMax - xMin) * 0.05;
 
-    type NearPoint = { idx: number; x: number; y: number; delta?: number };
+    type NearPoint = { idx: number; x: number; y: number; time: Date; value: number; delta?: number };
     let nearPointA: NearPoint | undefined = undefined;
     if (closestAResult && closestAResult.dist < nearThreshold) {
       const prevA = closestAResult.idx > 0 ? pointsA[closestAResult.idx - 1] : null;
@@ -364,6 +373,8 @@ function ParameterGraph({
         idx: closestAResult.idx,
         x: scaleX(closestAResult.point.x),
         y: scaleY(closestAResult.point.y),
+        time: new Date(closestAResult.point.x),
+        value: closestAResult.point.y,
         delta: prevA ? closestAResult.point.y - prevA.y : undefined,
       };
     }
@@ -375,6 +386,8 @@ function ParameterGraph({
         idx: closestBResult.idx,
         x: scaleX(closestBResult.point.x),
         y: scaleY(closestBResult.point.y),
+        time: new Date(closestBResult.point.x),
+        value: closestBResult.point.y,
         delta: prevB ? closestBResult.point.y - prevB.y : undefined,
       };
     }
@@ -514,8 +527,8 @@ function ParameterGraph({
                       <rect
                         x={hover.nearPointA.x + 8}
                         y={hover.nearPointA.y + 8}
-                        width={hover.nearPointA.delta !== undefined ? 120 : 70}
-                        height={20}
+                        width={140}
+                        height={34}
                         rx={3}
                         fill="#1e3a5f"
                         stroke="#3b82f6"
@@ -523,12 +536,21 @@ function ParameterGraph({
                       />
                       <text
                         x={hover.nearPointA.x + 14}
-                        y={hover.nearPointA.y + 22}
+                        y={hover.nearPointA.y + 21}
+                        fontSize="10"
+                        fill="#60a5fa"
+                        fontFamily="monospace"
+                      >
+                        {formatCalloutTime(hover.nearPointA.time)}
+                      </text>
+                      <text
+                        x={hover.nearPointA.x + 14}
+                        y={hover.nearPointA.y + 35}
                         fontSize="11"
                         fill="#3b82f6"
                         fontFamily="monospace"
                       >
-                        {formatValue(pointsA[hover.nearPointA.idx]!.y)}
+                        {formatValue(hover.nearPointA.value)}
                         {hover.nearPointA.delta !== undefined && (
                           <tspan fill="#60a5fa"> ({formatDelta(hover.nearPointA.delta)})</tspan>
                         )}
@@ -542,8 +564,8 @@ function ParameterGraph({
                       <rect
                         x={hover.nearPointB.x + 8}
                         y={hover.nearPointB.y + 8}
-                        width={hover.nearPointB.delta !== undefined ? 120 : 70}
-                        height={20}
+                        width={140}
+                        height={34}
                         rx={3}
                         fill="#3f1f1f"
                         stroke="#ef4444"
@@ -551,12 +573,21 @@ function ParameterGraph({
                       />
                       <text
                         x={hover.nearPointB.x + 14}
-                        y={hover.nearPointB.y + 22}
+                        y={hover.nearPointB.y + 21}
+                        fontSize="10"
+                        fill="#f87171"
+                        fontFamily="monospace"
+                      >
+                        {formatCalloutTime(hover.nearPointB.time)}
+                      </text>
+                      <text
+                        x={hover.nearPointB.x + 14}
+                        y={hover.nearPointB.y + 35}
                         fontSize="11"
                         fill="#ef4444"
                         fontFamily="monospace"
                       >
-                        {formatValue(pointsB[hover.nearPointB.idx]!.y)}
+                        {formatValue(hover.nearPointB.value)}
                         {hover.nearPointB.delta !== undefined && (
                           <tspan fill="#f87171"> ({formatDelta(hover.nearPointB.delta)})</tspan>
                         )}
