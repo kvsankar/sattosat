@@ -175,11 +175,11 @@ export function generateOrbitSamples(
   const meanMotion = satrec.no; // radians per minute
   const periodMinutes = (2 * Math.PI) / meanMotion;
 
-  // Sample around current time: half orbit before to half orbit after
+  // Sample around current time: half orbit before to half orbit after (total one orbit)
   const halfPoints = Math.floor(points / 2);
   for (let i = -halfPoints; i <= halfPoints; i++) {
     const fraction = i / points;
-    const offsetMinutes = fraction * periodMinutes * 2; // span full orbit across points
+    const offsetMinutes = fraction * periodMinutes; // span a single orbit across points
     const pointTime = new Date(time.getTime() + offsetMinutes * 60 * 1000);
 
     const position = calculatePosition(satrec, pointTime);
