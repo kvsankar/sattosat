@@ -39,10 +39,10 @@ const MIN_FOV_DEG = 0.001;
 export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTime, orbitPathB }: RelativeViewPanelProps) {
   const [fov, setFov] = useState<number>(45);
   const [autoFit, setAutoFit] = useState<boolean>(true);
-  const [showLos, setShowLos] = useState<boolean>(true);
   const [showSunLine, setShowSunLine] = useState<boolean>(true);
   const [showTrack, setShowTrack] = useState<boolean>(true);
   const [showVelocity, setShowVelocity] = useState<boolean>(true);
+  const [showNadir, setShowNadir] = useState<boolean>(true);
 
   // Suppress unused variable warnings - these are kept for potential future use
   void tleA;
@@ -136,10 +136,10 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
               positionB={positionB!}
               currentTime={currentTime}
               fov={displayFov}
-              showLos={showLos}
               showSunLine={showSunLine}
               showTrack={showTrack}
               showVelocity={showVelocity}
+              showNadir={showNadir}
               orbitPathB={orbitPathB}
             />
             <div className="absolute top-1.5 left-2 text-[10px] text-gray-300 bg-black/70 px-1.5 py-0.5 rounded pointer-events-none font-mono">
@@ -153,12 +153,12 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
           {/* Display Options */}
           <div className="flex flex-wrap gap-3 mb-3 text-[11px]">
             <label className="flex items-center gap-1.5 text-gray-300 cursor-pointer hover:text-white transition-colors">
-              <input type="checkbox" checked={showLos} onChange={e => setShowLos(e.target.checked)} className="accent-blue-500" />
-              LoS
-            </label>
-            <label className="flex items-center gap-1.5 text-gray-300 cursor-pointer hover:text-white transition-colors">
               <input type="checkbox" checked={showSunLine} onChange={e => setShowSunLine(e.target.checked)} className="accent-blue-500" />
               Sun
+            </label>
+            <label className="flex items-center gap-1.5 text-gray-300 cursor-pointer hover:text-white transition-colors">
+              <input type="checkbox" checked={showNadir} onChange={e => setShowNadir(e.target.checked)} className="accent-blue-500" />
+              Nadir
             </label>
             <label className="flex items-center gap-1.5 text-gray-300 cursor-pointer hover:text-white transition-colors">
               <input type="checkbox" checked={showTrack} onChange={e => setShowTrack(e.target.checked)} className="accent-blue-500" />
@@ -210,10 +210,10 @@ interface RelativeViewCanvasProps {
   positionB: SatellitePosition;
   currentTime: Date;
   fov: number;
-  showLos: boolean;
   showSunLine: boolean;
   showTrack: boolean;
   showVelocity: boolean;
+  showNadir: boolean;
   orbitPathB: ECIPosition[];
 }
 
@@ -227,10 +227,10 @@ function RelativeViewCanvas({
   positionB,
   currentTime,
   fov,
-  showLos,
   showSunLine,
   showTrack,
   showVelocity,
+  showNadir,
   orbitPathB,
 }: RelativeViewCanvasProps) {
   // Compute relative position and scaling
@@ -385,10 +385,10 @@ function RelativeViewCanvas({
           sunDirThree={sunDirThree}
           sunFromBDir={sunFromBDir}
           fov={fov}
-          showLos={showLos}
           showSunLine={showSunLine}
           showTrack={showTrack}
           showVelocity={showVelocity}
+          showNadir={showNadir}
           trackPoints={trackPoints}
           velocityDir={velocityDir}
           panelSize={panelSize}
@@ -410,10 +410,10 @@ interface RelativeSceneProps {
   sunDirThree: THREE.Vector3;
   sunFromBDir: THREE.Vector3;
   fov: number;
-  showLos: boolean;
   showSunLine: boolean;
   showTrack: boolean;
   showVelocity: boolean;
+  showNadir: boolean;
   trackPoints: [number, number, number][];
   velocityDir: THREE.Vector3 | null;
   panelSize: { width: number; height: number };
@@ -431,10 +431,10 @@ function RelativeScene({
   sunDirThree,
   sunFromBDir,
   fov,
-  showLos,
   showSunLine,
   showTrack,
   showVelocity,
+  showNadir,
   trackPoints,
   velocityDir,
   panelSize,
@@ -517,13 +517,14 @@ function RelativeScene({
             segment / 2;
           const offsetX = (leftOffsetM / 1000) * scale;
           return (
-            <mesh key={idx} position={[offsetX, 0, 0]} renderOrder={5}>
+            <mesh key={idx} position={[offsetX, 0, 0]} renderOrder={20}>
               <planeGeometry args={[(segment / 1000) * scale, panelSize.height]} />
               <meshStandardMaterial
                 color="#ef4444"
                 emissive="#ff7f7f"
                 emissiveIntensity={0.3}
                 side={THREE.DoubleSide}
+                depthTest={false}
               />
             </mesh>
           );
@@ -531,22 +532,14 @@ function RelativeScene({
       </group>
 
       {/* Nadir line from satellite to Earth center */}
-      <Line
-        points={[relThree, earthThree]}
-        color="#6b7280"
-        lineWidth={1}
-        dashed
-        dashSize={0.25}
-        gapSize={0.15}
-      />
-
-      {/* Line of sight from camera to satellite */}
-      {showLos && (
+      {showNadir && (
         <Line
-          points={[[0, 0, 0], relThree]}
-          color="#38bdf8"
-          lineWidth={0.75}
-          renderOrder={10}
+          points={[relThree, earthThree]}
+          color="#6b7280"
+          lineWidth={1}
+          dashed
+          dashSize={0.25}
+          gapSize={0.15}
         />
       )}
 
@@ -571,34 +564,52 @@ function RelativeScene({
       )}
 
       {/* Velocity direction (absolute - tangent to orbit track) */}
-      {showVelocity && velocityDir && (
-        <>
-          <Line
-            points={[
-              relThree,
-              [
-                relThree[0] + velocityDir.x * 2,
-                relThree[1] + velocityDir.y * 2,
-                relThree[2] + velocityDir.z * 2,
-              ],
-            ]}
-            color="#f97316"
-            lineWidth={1.2}
-            renderOrder={11}
-          />
-          <mesh
-            position={[
-              relThree[0] + velocityDir.x * 2,
-              relThree[1] + velocityDir.y * 2,
-              relThree[2] + velocityDir.z * 2,
-            ]}
-            renderOrder={11}
-          >
-            <coneGeometry args={[0.05, 0.12, 8]} />
-            <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={0.4} />
-          </mesh>
-        </>
-      )}
+      {showVelocity && velocityDir && (() => {
+        // Fixed visual length: half the view height at satellite distance
+        const distToB = Math.sqrt(relThree[0] ** 2 + relThree[1] ** 2 + relThree[2] ** 2);
+        const fovRad = (fov * Math.PI) / 180;
+        const velocityLength = distToB * Math.tan(fovRad / 2); // half the view height
+        const arrowHeadSize = velocityLength * 0.15; // arrowhead length
+        const tip: [number, number, number] = [
+          relThree[0] + velocityDir.x * velocityLength,
+          relThree[1] + velocityDir.y * velocityLength,
+          relThree[2] + velocityDir.z * velocityLength,
+        ];
+        // Create arrowhead by finding perpendicular direction
+        const up = new THREE.Vector3(0, 1, 0);
+        const perp = up.clone().cross(velocityDir).normalize();
+        if (perp.length() < 0.01) {
+          perp.set(1, 0, 0).cross(velocityDir).normalize();
+        }
+        const arrowLeft: [number, number, number] = [
+          tip[0] - velocityDir.x * arrowHeadSize + perp.x * arrowHeadSize * 0.25,
+          tip[1] - velocityDir.y * arrowHeadSize + perp.y * arrowHeadSize * 0.25,
+          tip[2] - velocityDir.z * arrowHeadSize + perp.z * arrowHeadSize * 0.25,
+        ];
+        const arrowRight: [number, number, number] = [
+          tip[0] - velocityDir.x * arrowHeadSize - perp.x * arrowHeadSize * 0.25,
+          tip[1] - velocityDir.y * arrowHeadSize - perp.y * arrowHeadSize * 0.25,
+          tip[2] - velocityDir.z * arrowHeadSize - perp.z * arrowHeadSize * 0.25,
+        ];
+        return (
+          <>
+            {/* Arrow shaft */}
+            <Line
+              points={[relThree, tip]}
+              color="#4ade80"
+              lineWidth={4}
+              renderOrder={11}
+            />
+            {/* Arrowhead as lines */}
+            <Line
+              points={[arrowLeft, tip, arrowRight]}
+              color="#4ade80"
+              lineWidth={4}
+              renderOrder={11}
+            />
+          </>
+        );
+      })()}
     </>
   );
 }
