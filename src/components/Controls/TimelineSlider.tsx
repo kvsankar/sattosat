@@ -147,48 +147,46 @@ export function TimelineSlider({
   };
 
   return (
-    <div className="bg-gray-800 p-4 rounded-lg">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm text-gray-400">Timeline</div>
-        <div className="flex items-center gap-2">
-          {onAnchor && (
-            <button
-              onClick={handleAnchorClick}
-              disabled={disabled}
-              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white disabled:opacity-50"
-            >
-              Anchor
-            </button>
-          )}
-          {showNow && (
-            <button
-              onClick={handleReset}
-              disabled={nowDisabled || disabled}
-              className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white disabled:opacity-50"
-              title={nowDisabled ? 'Now is outside range' : 'Jump to now'}
-            >
-              Now
-            </button>
-          )}
+    <div className="bg-gray-800 p-3 rounded-lg">
+      <div className="text-sm text-gray-400 mb-1 text-center">Timeline</div>
+      <div className="flex flex-wrap items-center justify-center gap-1.5 mb-2">
+        {onAnchor && (
           <button
-            onClick={togglePlay}
+            onClick={handleAnchorClick}
             disabled={disabled}
-            className={`px-3 py-1 text-xs rounded text-white ${
-              isPlaying
-                ? 'bg-red-600 hover:bg-red-700'
-                : 'bg-green-600 hover:bg-green-700'
-            } disabled:opacity-50`}
+            className="px-2 py-1 text-[10px] bg-gray-700 hover:bg-gray-600 rounded text-white disabled:opacity-50"
           >
-            {isPlaying ? 'Pause' : 'Play'}
+            Anchor
           </button>
+        )}
+        {showNow && (
           <button
-            onClick={cycleSpeed}
-            disabled={disabled}
-            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded text-white min-w-[50px] disabled:opacity-50"
+            onClick={handleReset}
+            disabled={nowDisabled || disabled}
+            className="px-2 py-1 text-[10px] bg-gray-700 hover:bg-gray-600 rounded text-white disabled:opacity-50"
+            title={nowDisabled ? 'Now is outside range' : 'Jump to now'}
           >
-            {SPEEDS[speedIndex]}x
+            Now
           </button>
-        </div>
+        )}
+        <button
+          onClick={togglePlay}
+          disabled={disabled}
+          className={`px-3 py-1 text-[10px] rounded text-white ${
+            isPlaying
+              ? 'bg-red-600 hover:bg-red-700'
+              : 'bg-green-600 hover:bg-green-700'
+          } disabled:opacity-50`}
+        >
+          {isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <button
+          onClick={cycleSpeed}
+          disabled={disabled}
+          className="px-2 py-1 text-[10px] bg-gray-700 hover:bg-gray-600 rounded text-white min-w-[48px] disabled:opacity-50"
+        >
+          {SPEEDS[speedIndex]}x
+        </button>
       </div>
 
       {/* Time display */}
@@ -229,7 +227,7 @@ export function TimelineSlider({
       </div>
 
       {/* Fine controls */}
-      <div className="flex gap-2 mt-3 text-xs">
+      <div className="flex gap-2 mt-3 text-[10px]">
         <button
           onClick={() => handleStep(-5)}
           disabled={disabled}

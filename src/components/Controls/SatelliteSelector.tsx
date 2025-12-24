@@ -100,17 +100,17 @@ export function SatelliteSelector({
 
   return (
     <div className="relative">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-0.5">
         <label
-          className="block text-sm font-medium"
+          className="block text-[12px] font-medium leading-tight"
           style={{ color }}
         >
           {label}
         </label>
         {selectedId !== null && cacheInfo && onRefresh && (
-          <div className="flex items-center gap-1 text-xs text-gray-500">
+          <div className="flex items-center gap-1 text-[11px] text-gray-500">
             <span title={`TLE Epoch: ${cacheInfo.epoch}`}>
-              cached {formatCacheAge(cacheInfo.timestamp)}
+              {formatCacheAge(cacheInfo.timestamp)}
             </span>
             <button
               onClick={(e) => {
@@ -125,17 +125,17 @@ export function SatelliteSelector({
           </div>
         )}
       {availableTles.length > 0 && onSelectTleEpoch && (
-        <div className="mt-2 space-y-1">
-          <div className="text-xs text-gray-500">TLE epoch</div>
+        <div className="mt-1.5 space-y-1">
+          <div className="text-[11px] text-gray-500">TLE epoch</div>
           <select
             value={selectedTleEpoch ?? 'auto'}
             onChange={(e) => {
               const val = e.target.value === 'auto' ? null : e.target.value;
               onSelectTleEpoch(val);
             }}
-            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+            className="w-32 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-[10px] leading-tight h-7"
           >
-            <option value="auto">Auto (nearest to timeline)</option>
+            <option value="auto">Auto</option>
             {availableTles
               .slice()
               .sort((a, b) => b.epoch.getTime() - a.epoch.getTime())
@@ -172,7 +172,7 @@ export function SatelliteSelector({
           }}
           placeholder="Search satellites..."
           disabled={disabled || loading}
-          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+          className="w-full px-2 py-1.5 bg-gray-800 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 text-[10px] leading-tight h-7"
         />
 
         {loading && (

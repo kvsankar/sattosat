@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Conjunction } from '../../types/satellite';
 
 type SortMode = 'date' | 'distance';
@@ -20,6 +20,7 @@ export function ConjunctionPanel({
   sortMode,
   onSortModeChange,
 }: ConjunctionPanelProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const sortedConjunctions = useMemo(() => {
     const sorted = [...conjunctions];
     if (sortMode === 'date') {
@@ -30,35 +31,25 @@ export function ConjunctionPanel({
     return sorted;
   }, [conjunctions, sortMode]);
 
-  if (loading) {
-    return (
-      <div className="bg-gray-800 p-4 rounded-lg">
-        <h3 className="text-white font-medium mb-3">Close Approaches</h3>
-        <div className="flex items-center gap-2 text-gray-400 text-sm">
-          <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-          Searching for conjunctions...
-        </div>
+  const header = (
+    <button
+      type="button"
+      onClick={() => setCollapsed(c => !c)}
+      className="w-full flex items-center justify-between px-3 py-2 bg-gray-850 text-left"
+    >
+      <div className="flex items-center gap-2 text-white font-medium">
+        <span>Close Approaches</span>
+        {conjunctions.length > 0 && (
+          <span className="text-gray-400 text-sm font-normal">
+            ({conjunctions.length})
+          </span>
+        )}
       </div>
-    );
-  }
-
-  return (
-    <div className="bg-gray-800 p-4 rounded-lg">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-white font-medium">
-          Close Approaches
-          {conjunctions.length > 0 && (
-            <span className="text-gray-400 text-sm font-normal ml-2">
-              ({conjunctions.length})
-            </span>
-          )}
-        </h3>
-
-        {/* Sort toggle */}
-        <div className="flex bg-gray-900 rounded-md text-xs">
+      <div className="flex items-center gap-2">
+        <div className="flex bg-gray-900 rounded-md text-xs overflow-hidden">
           <button
             onClick={() => onSortModeChange('date')}
-            className={`px-2 py-1 rounded-l-md transition-colors ${
+            className={`px-2 py-1 transition-colors ${
               sortMode === 'date'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-400 hover:text-white'
@@ -68,7 +59,7 @@ export function ConjunctionPanel({
           </button>
           <button
             onClick={() => onSortModeChange('distance')}
-            className={`px-2 py-1 rounded-r-md transition-colors ${
+            className={`px-2 py-1 transition-colors ${
               sortMode === 'distance'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-400 hover:text-white'
@@ -77,24 +68,37 @@ export function ConjunctionPanel({
             Distance
           </button>
         </div>
+        <span className="text-gray-400">{collapsed ? '▸' : '▾'}</span>
       </div>
+    </button>
+  );
 
-      {sortedConjunctions.length === 0 ? (
-        <div className="text-gray-400 text-sm">
-          Calculating closest approaches...
-        </div>
-      ) : (
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          {sortedConjunctions.map((conj, index) => (
-            <ConjunctionItem
-              key={index}
-              conjunction={conj}
-              onJump={() => onJumpToTime(conj.time)}
-              isCurrent={conj.time.getTime() === currentTime.getTime()}
-            />
-          ))}
-        </div>
-      )}
+  const body = loading ? (
+    <div className="flex items-center gap-2 text-gray-400 text-sm px-3 py-3">
+      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+      Searching for conjunctions...
+    </div>
+  ) : sortedConjunctions.length === 0 ? (
+    <div className="text-gray-400 text-sm px-3 py-3">
+      Calculating closest approaches...
+    </div>
+  ) : (
+    <div className="space-y-2 max-h-64 overflow-y-auto px-3 py-3">
+      {sortedConjunctions.map((conj, index) => (
+        <ConjunctionItem
+          key={index}
+          conjunction={conj}
+          onJump={() => onJumpToTime(conj.time)}
+          isCurrent={conj.time.getTime() === currentTime.getTime()}
+        />
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="border border-gray-700 rounded-md overflow-hidden bg-gray-800">
+      {header}
+      {!collapsed && body}
     </div>
   );
 }

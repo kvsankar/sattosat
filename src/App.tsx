@@ -83,6 +83,7 @@ export default function App() {
   const [showMainSunLine, setShowMainSunLine] = useState(true);
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [relativeCollapsed, setRelativeCollapsed] = useState(false);
+  const [sidebarTopCollapsed, setSidebarTopCollapsed] = useState(false);
   const hasAutoLoadedProfile = useRef(false);
 
   // Load satellite catalog
@@ -341,21 +342,22 @@ export default function App() {
   }, [autoNow]);
 
   return (
-    <div className="h-screen w-screen bg-gray-900 flex text-[13px]">
+    <div className="h-screen w-screen bg-gray-900 flex text-[12px]">
       {/* Collapse toggle button */}
-      <button
-        onClick={() => setPanelCollapsed(!panelCollapsed)}
-        className="absolute top-3 left-3 z-50 bg-gray-800 hover:bg-gray-700 text-white px-2 py-1 rounded-md shadow-lg transition-all text-xs"
-        style={{ left: panelCollapsed ? '12px' : '340px' }}
-        title={panelCollapsed ? 'Show panel' : 'Hide panel'}
-      >
-        {panelCollapsed ? '→' : '←'}
-      </button>
+      <div className="absolute top-2.5 left-2.5 z-50">
+        <button
+          onClick={() => setPanelCollapsed(!panelCollapsed)}
+          className="w-8 h-8 bg-gray-800 hover:bg-gray-700 text-white rounded-full shadow-lg transition-all text-sm flex items-center justify-center border border-gray-700"
+          title={panelCollapsed ? 'Show panel' : 'Hide panel'}
+        >
+          {panelCollapsed ? '▸' : '◂'}
+        </button>
+      </div>
 
       {/* Left sidebar */}
       <div
-        className={`w-[21rem] flex-shrink-0 px-3 py-3 overflow-y-auto border-r border-gray-700 transition-all duration-300 ${
-          panelCollapsed ? '-ml-[21rem]' : 'ml-0'
+        className={`w-[20rem] flex-shrink-0 px-2.5 py-2 overflow-y-auto border-r border-gray-700 transition-all duration-300 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent hover:scrollbar-thumb-gray-600 ${
+          panelCollapsed ? '-ml-[20rem]' : 'ml-0'
         }`}
       >
         <h1 className="text-lg font-bold text-white mb-1">SatOrbitViz</h1>
@@ -363,90 +365,110 @@ export default function App() {
           Satellite Orbit Visualization & Conjunction Finder
         </p>
 
-        {/* Profiles */}
-        <div className="mb-3 space-y-2">
-          <div className="flex items-center justify-between text-xs text-gray-300">
-            <span>Profiles</span>
-            <span className="text-gray-500 text-[11px]">sets satellites + now</span>
-          </div>
-          <select
-            value={selectedProfileName ?? ''}
-            onChange={(e) => handleSelectProfile(e.target.value)}
-            className="w-full bg-gray-900 text-white rounded px-2 py-1 border border-gray-700 text-sm"
+        <div className="mb-3 border border-gray-700 rounded-md overflow-hidden">
+          <button
+            onClick={() => setSidebarTopCollapsed(!sidebarTopCollapsed)}
+            className="w-full flex items-center justify-between bg-gray-850 px-2 py-1.5 text-xs text-gray-200 hover:text-white"
           >
-            <option value="">-- None --</option>
-            {profiles.map(p => (
-              <option key={p.name} value={p.name}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          {selectedProfileName && (
-            <div className="text-[11px] text-gray-500">
-              Anchor: {anchorTime.toISOString().replace('T', ' ').slice(0, 19)} UTC
+            <span className="font-semibold flex items-center gap-2">
+              Selections
+              {selectedProfileName && (
+                <span className="text-gray-500 text-[10px] font-normal">
+                  {selectedProfileName}
+                </span>
+              )}
+            </span>
+            <span className="text-gray-400">{sidebarTopCollapsed ? '▸' : '▾'}</span>
+          </button>
+          {!sidebarTopCollapsed && (
+            <div className="px-2.5 py-2 bg-gray-900">
+              {/* Profiles */}
+              <div className="mb-2 space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-gray-300">
+                  <span>Profiles</span>
+                  <span className="text-gray-500 text-[10px]">sets satellites + now</span>
+                </div>
+                <select
+                  value={selectedProfileName ?? ''}
+                  onChange={(e) => handleSelectProfile(e.target.value)}
+                  className="w-full bg-gray-900 text-white rounded px-2 py-1 border border-gray-700 text-[12px] leading-tight h-7"
+                >
+                  <option value="">-- None --</option>
+                  {profiles.map(p => (
+                    <option key={p.name} value={p.name}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedProfileName && (
+                  <div className="text-[11px] text-gray-500">
+                    Anchor: {anchorTime.toISOString().replace('T', ' ').slice(0, 19)} UTC
+                  </div>
+                )}
+              </div>
+
+              {/* Catalog cache info */}
+              <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1.5">
+                <span>
+                  {catalogCacheInfo
+                    ? `${catalogCacheInfo.count.toLocaleString()} sats (cached ${formatCacheAge(catalogCacheInfo.timestamp)})`
+                    : catalogLoading ? 'Loading catalog...' : 'No catalog loaded'
+                  }
+                </span>
+                <button
+                  onClick={refreshCatalog}
+                  disabled={catalogLoading}
+                  className="text-blue-400 hover:text-blue-300 disabled:text-gray-600"
+                  title="Refresh satellite catalog"
+                >
+                  ↻
+                </button>
+              </div>
+
+              {catalogError && (
+                <div className="bg-red-900/50 border border-red-600 text-red-200 p-3 rounded-lg mb-3 text-sm">
+                  {catalogError}
+                </div>
+              )}
+
+              {/* Satellite Selectors */}
+              <div className="space-y-1">
+                <SatelliteSelector
+                  label="Sat A"
+                  color="#3b82f6"
+                  catalog={catalog}
+                  selectedId={selectedIdA}
+                  onSelect={handleSelectA}
+                  loading={catalogLoading || loadingA}
+                  disabled={catalogLoading}
+                  cacheInfo={cacheInfoA}
+                  onRefresh={refreshTleA}
+                  availableTles={filteredAvailableTlesA}
+                  selectedTleEpoch={preferredEpochA}
+                  onSelectTleEpoch={setPreferredEpochA}
+                  onPasteTles={handlePasteTlesA}
+                  historicalLoading={historicalLoadingA}
+                />
+
+                <SatelliteSelector
+                  label="Sat B"
+                  color="#ef4444"
+                  catalog={catalog}
+                  selectedId={selectedIdB}
+                  onSelect={handleSelectB}
+                  loading={catalogLoading || loadingB}
+                  disabled={catalogLoading}
+                  cacheInfo={cacheInfoB}
+                  onRefresh={refreshTleB}
+                  availableTles={filteredAvailableTlesB}
+                  selectedTleEpoch={preferredEpochB}
+                  onSelectTleEpoch={setPreferredEpochB}
+                  onPasteTles={handlePasteTlesB}
+                  historicalLoading={historicalLoadingB}
+                />
+              </div>
             </div>
           )}
-        </div>
-
-        {/* Catalog cache info */}
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-          <span>
-            {catalogCacheInfo
-              ? `${catalogCacheInfo.count.toLocaleString()} satellites (cached ${formatCacheAge(catalogCacheInfo.timestamp)})`
-              : catalogLoading ? 'Loading catalog...' : 'No catalog loaded'
-            }
-          </span>
-          <button
-            onClick={refreshCatalog}
-            disabled={catalogLoading}
-            className="text-blue-400 hover:text-blue-300 disabled:text-gray-600"
-            title="Refresh satellite catalog"
-          >
-            ↻
-          </button>
-        </div>
-
-        {catalogError && (
-          <div className="bg-red-900/50 border border-red-600 text-red-200 p-3 rounded-lg mb-4 text-sm">
-            {catalogError}
-          </div>
-        )}
-
-        {/* Satellite Selectors */}
-        <div className="space-y-3 mb-5">
-          <SatelliteSelector
-            label="Satellite A"
-          color="#3b82f6"
-          catalog={catalog}
-          selectedId={selectedIdA}
-          onSelect={handleSelectA}
-          loading={catalogLoading || loadingA}
-          disabled={catalogLoading}
-          cacheInfo={cacheInfoA}
-          onRefresh={refreshTleA}
-          availableTles={filteredAvailableTlesA}
-          selectedTleEpoch={preferredEpochA}
-          onSelectTleEpoch={setPreferredEpochA}
-          onPasteTles={handlePasteTlesA}
-          historicalLoading={historicalLoadingA}
-        />
-
-          <SatelliteSelector
-            label="Satellite B"
-          color="#ef4444"
-          catalog={catalog}
-          selectedId={selectedIdB}
-          onSelect={handleSelectB}
-          loading={catalogLoading || loadingB}
-          disabled={catalogLoading}
-          cacheInfo={cacheInfoB}
-          onRefresh={refreshTleB}
-          availableTles={filteredAvailableTlesB}
-          selectedTleEpoch={preferredEpochB}
-          onSelectTleEpoch={setPreferredEpochB}
-          onPasteTles={handlePasteTlesB}
-          historicalLoading={historicalLoadingB}
-        />
         </div>
 
         {/* Timeline Controls */}

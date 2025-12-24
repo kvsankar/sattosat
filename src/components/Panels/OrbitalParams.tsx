@@ -31,15 +31,15 @@ export function OrbitalParams({
 
       {/* Current Distance */}
       {currentDistance !== null && (
-        <div className="mb-4 p-3 bg-gray-900 rounded-lg">
-          <div className="text-gray-400 text-xs uppercase mb-1">
+        <div className="mb-3 p-2.5 bg-gray-900 rounded-lg">
+          <div className="text-gray-400 text-[11px] uppercase mb-1">
             Current Distance
           </div>
-          <div className="text-2xl font-mono text-white">
+          <div className="text-xl font-mono text-white">
             {currentDistance.toFixed(1)} km
           </div>
           {relativeVelocity !== null && (
-            <div className="text-sm text-gray-400">
+            <div className="text-xs text-gray-400">
               Relative velocity: {relativeVelocity.toFixed(2)} km/s
             </div>
           )}
