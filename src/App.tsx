@@ -609,9 +609,19 @@ export default function App() {
             {timelineCollapsed ? (
               <button
                 onClick={() => setTimelineCollapsed(false)}
-                className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg flex items-center gap-2 px-3 py-2 text-left group hover:border-gray-600 transition-colors"
               >
-                ↑ Show graphs
+                <svg
+                  className="w-3 h-3 text-gray-500 group-hover:text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide group-hover:text-gray-300">
+                  Graphs
+                </span>
               </button>
             ) : (
               <TimelineTabs

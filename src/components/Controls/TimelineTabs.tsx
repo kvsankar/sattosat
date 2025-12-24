@@ -95,11 +95,11 @@ export function TimelineTabs({
           {onCollapse && (
             <button
               onClick={onCollapse}
-              className="text-gray-500 hover:text-white p-1"
+              className="text-gray-500 hover:text-white p-1 transition-colors"
               title="Collapse panel"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <svg className="w-3 h-3 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
           )}
@@ -516,80 +516,94 @@ function ParameterGraph({
                   />
 
                   {/* Floating callout for series A */}
-                  {hover.nearPointA && (
-                    <g>
-                      <circle cx={hover.nearPointA.x} cy={hover.nearPointA.y} r={5} fill="#3b82f6" stroke="#fff" strokeWidth="1.5" />
-                      <rect
-                        x={hover.nearPointA.x + 8}
-                        y={hover.nearPointA.y + 8}
-                        width={140}
-                        height={34}
-                        rx={3}
-                        fill="#1e3a5f"
-                        stroke="#3b82f6"
-                        strokeWidth="1"
-                      />
-                      <text
-                        x={hover.nearPointA.x + 14}
-                        y={hover.nearPointA.y + 21}
-                        fontSize="10"
-                        fill="#60a5fa"
-                        fontFamily="monospace"
-                      >
-                        {formatCalloutTime(hover.nearPointA.time)}
-                      </text>
-                      <text
-                        x={hover.nearPointA.x + 14}
-                        y={hover.nearPointA.y + 35}
-                        fontSize="11"
-                        fill="#3b82f6"
-                        fontFamily="monospace"
-                      >
-                        {formatValue(hover.nearPointA.value)}
-                        {hover.nearPointA.delta !== undefined && (
-                          <tspan fill="#60a5fa"> ({formatDelta(hover.nearPointA.delta)})</tspan>
-                        )}
-                      </text>
-                    </g>
-                  )}
+                  {hover.nearPointA && (() => {
+                    const calloutH = 34;
+                    const wouldClipBottom = hover.nearPointA.y + 8 + calloutH > viewBoxHeight - paddingBottom;
+                    const wouldClipTop = hover.nearPointA.y - 8 - calloutH < paddingTop;
+                    const yOffset = wouldClipBottom && !wouldClipTop ? -(8 + calloutH) : 8;
+                    const calloutY = hover.nearPointA.y + yOffset;
+                    return (
+                      <g>
+                        <circle cx={hover.nearPointA.x} cy={hover.nearPointA.y} r={5} fill="#3b82f6" stroke="#fff" strokeWidth="1.5" />
+                        <rect
+                          x={hover.nearPointA.x + 8}
+                          y={calloutY}
+                          width={140}
+                          height={calloutH}
+                          rx={3}
+                          fill="#1e3a5f"
+                          stroke="#3b82f6"
+                          strokeWidth="1"
+                        />
+                        <text
+                          x={hover.nearPointA.x + 14}
+                          y={calloutY + 13}
+                          fontSize="10"
+                          fill="#60a5fa"
+                          fontFamily="monospace"
+                        >
+                          {formatCalloutTime(hover.nearPointA.time)}
+                        </text>
+                        <text
+                          x={hover.nearPointA.x + 14}
+                          y={calloutY + 27}
+                          fontSize="11"
+                          fill="#3b82f6"
+                          fontFamily="monospace"
+                        >
+                          {formatValue(hover.nearPointA.value)}
+                          {hover.nearPointA.delta !== undefined && (
+                            <tspan fill="#60a5fa"> ({formatDelta(hover.nearPointA.delta)})</tspan>
+                          )}
+                        </text>
+                      </g>
+                    );
+                  })()}
 
                   {/* Floating callout for series B */}
-                  {hover.nearPointB && (
-                    <g>
-                      <circle cx={hover.nearPointB.x} cy={hover.nearPointB.y} r={5} fill="#ef4444" stroke="#fff" strokeWidth="1.5" />
-                      <rect
-                        x={hover.nearPointB.x + 8}
-                        y={hover.nearPointB.y + 8}
-                        width={140}
-                        height={34}
-                        rx={3}
-                        fill="#3f1f1f"
-                        stroke="#ef4444"
-                        strokeWidth="1"
-                      />
-                      <text
-                        x={hover.nearPointB.x + 14}
-                        y={hover.nearPointB.y + 21}
-                        fontSize="10"
-                        fill="#f87171"
-                        fontFamily="monospace"
-                      >
-                        {formatCalloutTime(hover.nearPointB.time)}
-                      </text>
-                      <text
-                        x={hover.nearPointB.x + 14}
-                        y={hover.nearPointB.y + 35}
-                        fontSize="11"
-                        fill="#ef4444"
-                        fontFamily="monospace"
-                      >
-                        {formatValue(hover.nearPointB.value)}
-                        {hover.nearPointB.delta !== undefined && (
-                          <tspan fill="#f87171"> ({formatDelta(hover.nearPointB.delta)})</tspan>
-                        )}
-                      </text>
-                    </g>
-                  )}
+                  {hover.nearPointB && (() => {
+                    const calloutH = 34;
+                    const wouldClipBottom = hover.nearPointB.y + 8 + calloutH > viewBoxHeight - paddingBottom;
+                    const wouldClipTop = hover.nearPointB.y - 8 - calloutH < paddingTop;
+                    const yOffset = wouldClipBottom && !wouldClipTop ? -(8 + calloutH) : 8;
+                    const calloutY = hover.nearPointB.y + yOffset;
+                    return (
+                      <g>
+                        <circle cx={hover.nearPointB.x} cy={hover.nearPointB.y} r={5} fill="#ef4444" stroke="#fff" strokeWidth="1.5" />
+                        <rect
+                          x={hover.nearPointB.x + 8}
+                          y={calloutY}
+                          width={140}
+                          height={calloutH}
+                          rx={3}
+                          fill="#3f1f1f"
+                          stroke="#ef4444"
+                          strokeWidth="1"
+                        />
+                        <text
+                          x={hover.nearPointB.x + 14}
+                          y={calloutY + 13}
+                          fontSize="10"
+                          fill="#f87171"
+                          fontFamily="monospace"
+                        >
+                          {formatCalloutTime(hover.nearPointB.time)}
+                        </text>
+                        <text
+                          x={hover.nearPointB.x + 14}
+                          y={calloutY + 27}
+                          fontSize="11"
+                          fill="#ef4444"
+                          fontFamily="monospace"
+                        >
+                          {formatValue(hover.nearPointB.value)}
+                          {hover.nearPointB.delta !== undefined && (
+                            <tspan fill="#f87171"> ({formatDelta(hover.nearPointB.delta)})</tspan>
+                          )}
+                        </text>
+                      </g>
+                    );
+                  })()}
                 </>
               );
             })()}
