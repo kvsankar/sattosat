@@ -173,7 +173,13 @@ function ParameterGraph({
   onTimeChange,
   height,
 }: ParameterGraphProps) {
-  const [hover, setHover] = useState<{ time: Date; valueA?: number; valueB?: number } | null>(null);
+  const [hover, setHover] = useState<{
+    time: Date;
+    valueA?: number;
+    valueB?: number;
+    nearPointA?: { idx: number; x: number; y: number; delta?: number };
+    nearPointB?: { idx: number; x: number; y: number; delta?: number };
+  } | null>(null);
   const metricInfo = METRICS.find(m => m.id === metric)!;
   const viewBoxWidth = 1400;
   const viewBoxHeight = Math.max(140, height - 20);
@@ -271,10 +277,14 @@ function ParameterGraph({
   const xTicks = buildTicks(xMin, xMax, 4);
   const yTicks = buildTicks(yMin, yMax, 4);
 
-  const scaleX = (x: number) =>
-    paddingLeft + ((x - xMin) / (xMax - xMin || 1)) * innerW;
-  const scaleY = (y: number) =>
-    paddingTop + innerH - ((y - yMin) / ySpan) * innerH;
+  const scaleX = useCallback(
+    (x: number) => paddingLeft + ((x - xMin) / (xMax - xMin || 1)) * innerW,
+    [paddingLeft, xMin, xMax, innerW]
+  );
+  const scaleY = useCallback(
+    (y: number) => paddingTop + innerH - ((y - yMin) / ySpan) * innerH,
+    [paddingTop, innerH, yMin, ySpan]
+  );
 
   const path = (pts: typeof pointsA) =>
     pts
@@ -289,6 +299,19 @@ function ParameterGraph({
 
   const formatHoverTime = (d: Date) => {
     return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+  };
+
+  const formatValue = (n: number) => {
+    const abs = Math.abs(n);
+    if (abs >= 1000) return n.toFixed(1);
+    if (abs >= 100) return n.toFixed(2);
+    if (abs >= 1) return n.toFixed(3);
+    return n.toPrecision(3);
+  };
+
+  const formatDelta = (n: number) => {
+    const sign = n >= 0 ? '+' : '';
+    return sign + formatValue(n);
   };
 
   const onClick = (event: React.MouseEvent<SVGSVGElement>) => {
@@ -308,19 +331,62 @@ function ParameterGraph({
       Math.max(0, (event.clientX - rect.left - paddingLeft) / (rect.width - paddingLeft - paddingRight))
     );
     const targetMs = xMin + ratio * (xMax - xMin || 1);
-    // Find closest points
-    const closestA = pointsA.length ? pointsA.reduce((best, p) =>
-      Math.abs(p.x - targetMs) < Math.abs(best.x - targetMs) ? p : best
-    ) : null;
-    const closestB = pointsB.length ? pointsB.reduce((best, p) =>
-      Math.abs(p.x - targetMs) < Math.abs(best.x - targetMs) ? p : best
-    ) : null;
+
+    // Find closest points with index using reduce
+    const closestAResult = pointsA.length
+      ? pointsA.reduce(
+          (acc, p, i) => {
+            const dist = Math.abs(p.x - targetMs);
+            return dist < acc.dist ? { point: p, idx: i, dist } : acc;
+          },
+          { point: pointsA[0]!, idx: 0, dist: Math.abs(pointsA[0]!.x - targetMs) }
+        )
+      : null;
+
+    const closestBResult = pointsB.length
+      ? pointsB.reduce(
+          (acc, p, i) => {
+            const dist = Math.abs(p.x - targetMs);
+            return dist < acc.dist ? { point: p, idx: i, dist } : acc;
+          },
+          { point: pointsB[0]!, idx: 0, dist: Math.abs(pointsB[0]!.x - targetMs) }
+        )
+      : null;
+
+    // Check if we're "near" a point (within 5% of the x-range)
+    const nearThreshold = (xMax - xMin) * 0.05;
+
+    type NearPoint = { idx: number; x: number; y: number; delta?: number };
+    let nearPointA: NearPoint | undefined = undefined;
+    if (closestAResult && closestAResult.dist < nearThreshold) {
+      const prevA = closestAResult.idx > 0 ? pointsA[closestAResult.idx - 1] : null;
+      nearPointA = {
+        idx: closestAResult.idx,
+        x: scaleX(closestAResult.point.x),
+        y: scaleY(closestAResult.point.y),
+        delta: prevA ? closestAResult.point.y - prevA.y : undefined,
+      };
+    }
+
+    let nearPointB: NearPoint | undefined = undefined;
+    if (closestBResult && closestBResult.dist < nearThreshold) {
+      const prevB = closestBResult.idx > 0 ? pointsB[closestBResult.idx - 1] : null;
+      nearPointB = {
+        idx: closestBResult.idx,
+        x: scaleX(closestBResult.point.x),
+        y: scaleY(closestBResult.point.y),
+        delta: prevB ? closestBResult.point.y - prevB.y : undefined,
+      };
+    }
+
     setHover({
       time: new Date(targetMs),
-      valueA: closestA?.y,
-      valueB: closestB?.y,
+      valueA: closestAResult?.point.y,
+      valueB: closestBResult?.point.y,
+      nearPointA,
+      nearPointB,
     });
-  }, [paddingLeft, paddingRight, xMin, xMax, pointsA, pointsB]);
+  }, [paddingLeft, paddingRight, xMin, xMax, pointsA, pointsB, scaleX, scaleY]);
 
   const onMouseLeave = useCallback(() => {
     setHover(null);
@@ -441,13 +507,74 @@ function ParameterGraph({
                   {hover.valueB !== undefined && (
                     <circle cx={hoverX} cy={scaleY(hover.valueB)} r={5} fill="#ef4444" stroke="#fff" strokeWidth="1.5" />
                   )}
+
+                  {/* Floating callout for series A */}
+                  {hover.nearPointA && (
+                    <g>
+                      <rect
+                        x={hover.nearPointA.x + 8}
+                        y={hover.nearPointA.y + 8}
+                        width={hover.nearPointA.delta !== undefined ? 120 : 70}
+                        height={20}
+                        rx={3}
+                        fill="#1e3a5f"
+                        stroke="#3b82f6"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={hover.nearPointA.x + 14}
+                        y={hover.nearPointA.y + 22}
+                        fontSize="11"
+                        fill="#3b82f6"
+                        fontFamily="monospace"
+                      >
+                        {formatValue(pointsA[hover.nearPointA.idx]!.y)}
+                        {hover.nearPointA.delta !== undefined && (
+                          <tspan fill="#60a5fa"> ({formatDelta(hover.nearPointA.delta)})</tspan>
+                        )}
+                      </text>
+                    </g>
+                  )}
+
+                  {/* Floating callout for series B */}
+                  {hover.nearPointB && (
+                    <g>
+                      <rect
+                        x={hover.nearPointB.x + 8}
+                        y={hover.nearPointB.y + 8}
+                        width={hover.nearPointB.delta !== undefined ? 120 : 70}
+                        height={20}
+                        rx={3}
+                        fill="#3f1f1f"
+                        stroke="#ef4444"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={hover.nearPointB.x + 14}
+                        y={hover.nearPointB.y + 22}
+                        fontSize="11"
+                        fill="#ef4444"
+                        fontFamily="monospace"
+                      >
+                        {formatValue(pointsB[hover.nearPointB.idx]!.y)}
+                        {hover.nearPointB.delta !== undefined && (
+                          <tspan fill="#f87171"> ({formatDelta(hover.nearPointB.delta)})</tspan>
+                        )}
+                      </text>
+                    </g>
+                  )}
                 </>
               );
             })()}
           </svg>
         {hover && (
-          <div className="absolute bottom-1 right-2 text-[10px] font-mono text-gray-400 bg-gray-900/80 px-1.5 py-0.5 rounded">
-            {formatHoverTime(hover.time)} · A: {hover.valueA?.toFixed(2) ?? '–'} · B: {hover.valueB?.toFixed(2) ?? '–'} {metricInfo.unit}
+          <div className="absolute bottom-1 right-2 text-[10px] font-mono bg-gray-900/80 px-1.5 py-0.5 rounded flex items-center gap-1.5">
+            <span className="text-gray-400">{formatHoverTime(hover.time)}</span>
+            <span className="text-gray-600">·</span>
+            <span style={{ color: '#3b82f6' }}>A: {hover.valueA !== undefined ? formatValue(hover.valueA) : '–'}</span>
+            <span className="text-gray-600">·</span>
+            <span style={{ color: '#ef4444' }}>B: {hover.valueB !== undefined ? formatValue(hover.valueB) : '–'}</span>
+            {metricInfo.unit && <span className="text-gray-500">{metricInfo.unit}</span>}
           </div>
         )}
         </>
