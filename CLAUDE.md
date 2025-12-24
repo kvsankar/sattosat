@@ -58,15 +58,38 @@ Pre-commit hook runs `npm run lint` automatically via simple-git-hooks.
 
 Special 3D canvas showing Satellite B as seen from Satellite A:
 - Camera at Sat A, north-up orientation (Z-axis projects to screen up)
-- FoV presets: 0.5′, 3′, 20′, 120′ with auto-fit option
+- FoV presets: 0.5′, 3′, 20′, 2°, 90° with auto-fit option
 - Shows line-of-sight, sun direction, relative orbit track
+
+### Fullscreen Distance Graph
+
+High-resolution zoomable graph (`src/components/Controls/FullscreenDistanceGraph.tsx`):
+- D3.js-powered with zoom (1x-50x) and pan
+- ~17,000 samples at 30-second intervals
+- Shows conjunction points as red markers
+- Portal-based fullscreen overlay
 
 ## Key Libraries
 
 - **satellite.js** - SGP4/SDP4 orbit propagation
 - **tle.js** - TLE parsing utilities
 - **@react-three/fiber** + **drei** - React bindings for Three.js
+- **D3.js** - Interactive charting for fullscreen distance graph
 - **Tailwind CSS** - Styling
+- **Playwright** - Screenshot capture for documentation
+
+## Documentation
+
+- `README.md` - Project overview and setup
+- `USAGE.md` - Comprehensive feature guide with screenshots
+- `screenshots/` - UI screenshots for documentation
+- `scripts/capture-usage-screenshots.ts` - Playwright script to regenerate screenshots
+
+To update screenshots after UI changes:
+```bash
+npm run dev &
+npx tsx scripts/capture-usage-screenshots.ts
+```
 
 ## Conventions
 
