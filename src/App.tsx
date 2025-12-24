@@ -529,7 +529,7 @@ export default function App() {
         </CollapsibleSection>
 
         {/* Orbital Parameters */}
-        {pairEnabled && (
+        {(hasSatA || hasSatB) && (
           <CollapsibleSection title="Orbital Parameters">
             <OrbitalParams
               tleA={displayTleA}

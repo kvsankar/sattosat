@@ -25,10 +25,12 @@ export function OrbitalParams({
     );
   }
 
+  const hasBoth = tleA && tleB;
+
   return (
     <div className="bg-gray-800 p-3 rounded-lg">
-      {/* Current Distance */}
-      {currentDistance !== null && (
+      {/* Current Distance - only show when both satellites are selected */}
+      {hasBoth && currentDistance !== null && (
         <div className="mb-3 p-2.5 bg-gray-900 rounded-lg">
           <div className="text-gray-400 text-[11px] uppercase mb-1">
             Current Distance
@@ -44,10 +46,10 @@ export function OrbitalParams({
         </div>
       )}
 
-      {/* Side by side comparison */}
-      <div className="grid grid-cols-2 gap-4">
-        <ParamColumn tle={tleA} position={positionA} label="Satellite A" color="#3b82f6" />
-        <ParamColumn tle={tleB} position={positionB} label="Satellite B" color="#ef4444" />
+      {/* Side by side comparison when both selected, single column otherwise */}
+      <div className={hasBoth ? 'grid grid-cols-2 gap-4' : ''}>
+        {tleA && <ParamColumn tle={tleA} position={positionA} label="Satellite A" color="#3b82f6" />}
+        {tleB && <ParamColumn tle={tleB} position={positionB} label="Satellite B" color="#ef4444" />}
       </div>
     </div>
   );

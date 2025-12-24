@@ -26,7 +26,7 @@ export function TimelineSlider({
   initialPlaying = false,
 }: TimelineSliderProps) {
   const [isPlaying, setIsPlaying] = useState(initialPlaying);
-  const [speedIndex, setSpeedIndex] = useState(initialPlaying ? 0 : 1); // Default 10x unless auto-play at 1x
+  const [speedIndex, setSpeedIndex] = useState(0); // Default 1x
 
   const anchor = anchorTime ?? new Date();
   const minTime = anchor.getTime() - rangeDays * 24 * 60 * 60 * 1000;
