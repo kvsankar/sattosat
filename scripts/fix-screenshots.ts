@@ -71,6 +71,38 @@ async function fixScreenshots() {
     }
   }
 
+  // 3. Fix Main 3D View - center Earth and position orbits to cross in center
+  console.log('3. Capturing Main 3D View...');
+
+  // Reset sidebar scroll
+  await sidebar.evaluate(el => el.scrollTop = 0);
+  await page.waitForTimeout(300);
+
+  const mainViewContainer = page.locator('.rounded-lg.overflow-hidden.bg-black\\/40').first();
+  if (await mainViewContainer.isVisible()) {
+    const box = await mainViewContainer.boundingBox();
+    if (box) {
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+
+      // First, reset view by double-clicking
+      await page.mouse.dblclick(centerX, centerY);
+      await page.waitForTimeout(500);
+
+      // Rotate to position where orbits cross in center
+      // Drag to rotate globe - adjust to get good orbit intersection view
+      await page.mouse.move(centerX + 120, centerY + 20);
+      await page.mouse.down();
+      await page.mouse.move(centerX - 60, centerY - 60, { steps: 30 });
+      await page.mouse.up();
+      await page.waitForTimeout(500);
+
+      // Capture the main view container
+      await mainViewContainer.screenshot({ path: path.join(SCREENSHOTS_DIR, 'main-3d-view.png') });
+      console.log('   Main 3D View captured');
+    }
+  }
+
   await browser.close();
   console.log('\nScreenshots fixed successfully!');
 }
