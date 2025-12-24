@@ -64,6 +64,7 @@ export default function App() {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [conjunctionSortMode, setConjunctionSortMode] = useState<SortMode>('distance');
   const [showGrid, setShowGrid] = useState(true);
+  const [epochWarning, setEpochWarning] = useState<string | null>(null);
   const [anchorTime, setAnchorTime] = useState<Date>(new Date());
   const [selectedProfileName, setSelectedProfileName] = useState<string | null>(null);
   const [profileNames, setProfileNames] = useState<Record<number, string>>({});
@@ -128,6 +129,59 @@ export default function App() {
     () => filterTlesByAnchor(allTlesB, anchorTime),
     [allTlesB, anchorTime]
   );
+
+  // Effective TLE lists: restricted to single TLE if user selected an epoch, otherwise full filtered list
+  const effectiveTlesA = useMemo(() => {
+    if (preferredEpochA) {
+      const selected = allTlesA.find(t => t.epoch.toISOString() === preferredEpochA);
+      return selected ? [selected] : filteredAllTlesA;
+    }
+    return filteredAllTlesA;
+  }, [allTlesA, preferredEpochA, filteredAllTlesA]);
+
+  const effectiveTlesB = useMemo(() => {
+    if (preferredEpochB) {
+      const selected = allTlesB.find(t => t.epoch.toISOString() === preferredEpochB);
+      return selected ? [selected] : filteredAllTlesB;
+    }
+    return filteredAllTlesB;
+  }, [allTlesB, preferredEpochB, filteredAllTlesB]);
+
+  // Validate preferred epoch selection: if user selected an epoch that no longer exists
+  // in the TLE list (e.g., after changing satellite), reset to Auto and warn
+  useEffect(() => {
+    if (preferredEpochA && allTlesA.length > 0) {
+      const found = allTlesA.some(t => t.epoch.toISOString() === preferredEpochA);
+      if (!found) {
+        console.warn(
+          `[SatOrbitViz] Selected TLE epoch for Sat A (${preferredEpochA}) not found in available TLEs. Resetting to Auto.`
+        );
+        setEpochWarning('Sat A: Selected epoch not found. Reset to Auto.');
+        setPreferredEpochA(null);
+      }
+    }
+  }, [allTlesA, preferredEpochA, setPreferredEpochA]);
+
+  useEffect(() => {
+    if (preferredEpochB && allTlesB.length > 0) {
+      const found = allTlesB.some(t => t.epoch.toISOString() === preferredEpochB);
+      if (!found) {
+        console.warn(
+          `[SatOrbitViz] Selected TLE epoch for Sat B (${preferredEpochB}) not found in available TLEs. Resetting to Auto.`
+        );
+        setEpochWarning('Sat B: Selected epoch not found. Reset to Auto.');
+        setPreferredEpochB(null);
+      }
+    }
+  }, [allTlesB, preferredEpochB, setPreferredEpochB]);
+
+  // Auto-dismiss epoch warning toast after 4 seconds
+  useEffect(() => {
+    if (epochWarning) {
+      const timer = setTimeout(() => setEpochWarning(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [epochWarning]);
 
   const pickActiveTle = useCallback(
     (
@@ -195,12 +249,12 @@ export default function App() {
     currentDistance,
     currentRelativeVelocity,
     loading: conjunctionsLoading,
-  } = useConjunctions(tleA, tleB, allTlesA, allTlesB, currentTime, SEARCH_RANGE_DAYS, anchorTime);
+  } = useConjunctions(tleA, tleB, effectiveTlesA, effectiveTlesB, currentTime, SEARCH_RANGE_DAYS, anchorTime);
 
   const distanceSamples = useMemo(() => {
     if (!pairEnabled) return [];
-    const tlesAForCurve = allTlesA.length ? allTlesA : (tleA ? [tleA] : []);
-    const tlesBForCurve = allTlesB.length ? allTlesB : (tleB ? [tleB] : []);
+    const tlesAForCurve = effectiveTlesA.length ? effectiveTlesA : (tleA ? [tleA] : []);
+    const tlesBForCurve = effectiveTlesB.length ? effectiveTlesB : (tleB ? [tleB] : []);
     if (tlesAForCurve.length === 0 || tlesBForCurve.length === 0) return [];
     const start = new Date(anchorTime.getTime() - SEARCH_RANGE_DAYS * DAY_MS);
     const end = new Date(anchorTime.getTime() + SEARCH_RANGE_DAYS * DAY_MS);
@@ -226,7 +280,7 @@ export default function App() {
     for (const extra of extraPoints) merged.set(extra.time.getTime(), extra);
 
     return Array.from(merged.values()).sort((a, b) => a.time.getTime() - b.time.getTime());
-  }, [allTlesA, allTlesB, tleA, tleB, anchorTime, currentDistance, currentTime, conjunctions, pairEnabled]);
+  }, [effectiveTlesA, effectiveTlesB, tleA, tleB, anchorTime, currentDistance, currentTime, conjunctions, pairEnabled]);
 
   // Handlers
   const handleSelectA = useCallback((entry: SatelliteCatalogEntry | null) => {
@@ -332,6 +386,13 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen bg-gray-900 flex text-[12px]">
+      {/* Toast notification for epoch warnings */}
+      {epochWarning && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-yellow-900/90 border border-yellow-600 text-yellow-200 px-4 py-2 rounded shadow-lg text-sm">
+          {epochWarning}
+        </div>
+      )}
+
       {/* Collapsed sidebar expand button */}
       {panelCollapsed && (
         <button
@@ -633,8 +694,8 @@ export default function App() {
                 onTimeChange={handleTimeChange}
                 height={TIMELINE_HEIGHT}
                 onCollapse={() => setTimelineCollapsed(true)}
-                tleSeriesA={filteredAllTlesA}
-                tleSeriesB={filteredAllTlesB}
+                tleSeriesA={effectiveTlesA}
+                tleSeriesB={effectiveTlesB}
               />
             )}
           </div>
