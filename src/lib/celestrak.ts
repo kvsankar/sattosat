@@ -16,6 +16,7 @@ const DEFAULT_TLE_CACHE_MS = 24 * 60 * 60 * 1000; // 24 hours
 // Earth constants
 const EARTH_RADIUS_KM = 6378.137;
 const MU = 398600.4418; // Earth's gravitational parameter (km^3/s^2)
+const MAX_TLE_CACHE_ENTRIES = 50;
 
 // Satellite groups to fetch from Celestrak
 const SATELLITE_GROUPS = [
@@ -39,6 +40,7 @@ interface TLECacheStored {
   line1: string;
   line2: string;
   timestamp: number; // when this TLE snapshot was stored
+  source?: 'manual' | 'fetched';
 }
 
 interface TLECacheEntry {
@@ -313,7 +315,11 @@ function parseTLE(gp: CelestrakGP, line1: string, line2: string): SatelliteTLE {
 }
 
 // Parse manual TLE text (one or more two-line sets) and cache them
-export function addManualTLEs(noradId: number, tleText: string, opts?: { forceNorad?: boolean }): number {
+export function addManualTLEs(
+  noradId: number,
+  tleText: string,
+  opts?: { forceNorad?: boolean; nameOverride?: string }
+): number {
   const sets = parseTleSets(tleText);
   let added = 0;
   for (const { name, line1, line2 } of sets) {
@@ -323,7 +329,10 @@ export function addManualTLEs(noradId: number, tleText: string, opts?: { forceNo
     if (opts?.forceNorad && gp.NORAD_CAT_ID !== noradId) {
       gp.NORAD_CAT_ID = noradId;
     }
-    cacheTLE(noradId, gp, line1, line2);
+    if (opts?.nameOverride) {
+      gp.OBJECT_NAME = opts.nameOverride;
+    }
+    cacheTLE(noradId, gp, line1, line2, 'manual');
     added += 1;
   }
   return added;
@@ -385,7 +394,10 @@ function getCachedTLEEntries(noradId: number, maxAgeMs: number): TLECacheStored[
     const entry: TLECacheEntry = JSON.parse(cached);
     const normalized = normalizeTleEntries(entry);
     const now = Date.now();
-    const fresh = normalized.filter(e => now - e.timestamp <= maxAgeMs);
+    const fresh = normalized.filter(e => {
+      if (e.source === 'manual') return true;
+      return now - e.timestamp <= maxAgeMs;
+    });
 
     // Persist cleaned entries back
     saveTleEntries(key, fresh);
@@ -396,7 +408,7 @@ function getCachedTLEEntries(noradId: number, maxAgeMs: number): TLECacheStored[
   }
 }
 
-function cacheTLE(noradId: number, gp: CelestrakGP, line1: string, line2: string): void {
+function cacheTLE(noradId: number, gp: CelestrakGP, line1: string, line2: string, source: 'manual' | 'fetched' = 'fetched'): void {
   try {
     const key = `${CACHE_KEY_TLE_PREFIX}${noradId}`;
 
@@ -406,11 +418,14 @@ function cacheTLE(noradId: number, gp: CelestrakGP, line1: string, line2: string
       line1,
       line2,
       timestamp: Date.now(),
+      source,
     };
 
     // Replace entries with same epoch to avoid duplicates
     const filtered = existing.filter(e => e.gp.EPOCH !== gp.EPOCH);
-    const combined = [newEntry, ...filtered].slice(0, 10); // keep most recent 10 snapshots
+    const combined = [...filtered, newEntry]
+      .sort((a, b) => new Date(b.gp.EPOCH).getTime() - new Date(a.gp.EPOCH).getTime())
+      .slice(0, MAX_TLE_CACHE_ENTRIES);
 
     saveTleEntries(key, combined);
   } catch {
@@ -441,13 +456,14 @@ function normalizeTleEntries(entry: unknown): TLECacheStored[] {
         line1: candidate.data.line1,
         line2: candidate.data.line2,
         timestamp: ts,
+        source: candidate.data.source ?? 'manual',
       }),
     ];
   }
 
   if (candidate.gp && candidate.line1 && candidate.line2) {
     const ts = candidate.timestamp ?? Date.now();
-    return [sanitizeCachedEntry({ gp: candidate.gp, line1: candidate.line1, line2: candidate.line2, timestamp: ts })];
+    return [sanitizeCachedEntry({ gp: candidate.gp, line1: candidate.line1, line2: candidate.line2, timestamp: ts, source: candidate.source ?? 'fetched' })];
   }
 
   return [];
@@ -458,7 +474,7 @@ function sanitizeCachedEntry(entry: TLECacheStored): TLECacheStored {
   if (gp.OBJECT_NAME && (gp.OBJECT_NAME.startsWith('1 ') || gp.OBJECT_NAME.startsWith('2 '))) {
     gp.OBJECT_NAME = `NORAD ${gp.NORAD_CAT_ID}`;
   }
-  return { ...entry, gp };
+  return { ...entry, gp, source: entry.source ?? 'fetched' };
 }
 
 function saveTleEntries(key: string, entries: TLECacheStored[]): void {

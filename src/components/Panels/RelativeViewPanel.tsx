@@ -487,6 +487,19 @@ function RelativeScene({
             renderOrder={6}
           />
         )}
+        {/* Nadir line from satellite to Earth center */}
+        <Line
+          points={[
+            [relThree[0], relThree[1], relThree[2]],
+            [earthThree[0], earthThree[1], earthThree[2]],
+          ]}
+          color="#6b7280"
+          lineWidth={1}
+          dashed
+          dashSize={0.25}
+          gapSize={0.15}
+          renderOrder={6}
+        />
         {/* Earth sphere if within view volume */}
         {earthVisible && (
           <mesh position={earthThree} renderOrder={3}>

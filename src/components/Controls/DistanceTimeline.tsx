@@ -33,15 +33,23 @@ export function DistanceTimeline({
     return { min, max, start, end };
   }, [samples, currentDistanceKm]);
 
-  const viewBoxWidth = 1300;
+  const viewBoxWidth = 1400;
   const viewBoxHeight = Math.max(140, height - 20);
   const paddingLeft = 60;
-  const paddingRight = 24;
+  const paddingRight = 16;
   const paddingTop = 12;
-  const paddingBottom = 28;
+  const paddingBottom = 32;
   const padding = { left: paddingLeft, right: paddingRight, top: paddingTop, bottom: paddingBottom };
   const innerW = viewBoxWidth - paddingLeft - paddingRight;
   const innerH = viewBoxHeight - paddingTop - paddingBottom;
+
+  const formatTick = (n: number) => {
+    const abs = Math.abs(n);
+    if (abs >= 100) return Math.round(n).toString();
+    if (abs >= 10) return n.toFixed(1);
+    if (abs >= 1) return n.toFixed(1);
+    return n.toFixed(2);
+  };
 
   const path = useMemo(() => {
     if (!samples.length || !stats) return '';
@@ -137,7 +145,7 @@ export function DistanceTimeline({
           className="absolute top-2 right-2 text-gray-300 hover:text-white text-xs bg-gray-800/80 border border-gray-700 rounded px-2 py-0.5"
           title="Collapse timeline"
         >
-          ×
+          ↓
         </button>
       )}
       {!stats ? (
@@ -227,14 +235,8 @@ export function DistanceTimeline({
                     stroke="#1f2937"
                     strokeWidth="0.5"
                   />
-                  <text
-                    x={padding.left - 6}
-                    y={y + 3}
-                    fontSize="10"
-                    fill="#9ca3af"
-                    textAnchor="end"
-                  >
-                    {d.toFixed(0)} km
+                  <text x={padding.left - 6} y={y + 3} fontSize="10" fill="#9ca3af" textAnchor="end">
+                    {formatTick(d)} km
                   </text>
                 </g>
               );

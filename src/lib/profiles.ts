@@ -4,6 +4,7 @@ import { addManualTLEs } from './celestrak';
 export interface ProfileSatellite {
   noradId: number;
   role: string;
+  name?: string;
   tles: string[];
 }
 
@@ -19,7 +20,7 @@ export const profiles: Profile[] = profilesData as Profile[];
 export function applyProfileTles(profile: Profile): void {
   for (const sat of profile.satellites) {
     for (const tleText of sat.tles) {
-      addManualTLEs(sat.noradId, tleText, { forceNorad: true });
+      addManualTLEs(sat.noradId, tleText, { forceNorad: true, nameOverride: sat.name });
     }
   }
 }

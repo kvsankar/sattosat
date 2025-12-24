@@ -13,13 +13,11 @@ import { useConjunctions } from './hooks/useConjunctions';
 import type { SatelliteCatalogEntry, SatelliteTLE } from './types/satellite';
 import { sampleDistanceCurve } from './lib/conjunctions';
 import { profiles, applyProfileTles } from './lib/profiles';
-import { DistanceTimeline } from './components/Controls/DistanceTimeline';
+import { TimelineTabs } from './components/Controls/TimelineTabs';
 
 type SortMode = 'date' | 'distance';
 const SEARCH_RANGE_DAYS = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const RELATIVE_PANEL_WIDTH = 384; // px (w-96)
-const CONTROL_PANEL_WIDTH = 224;  // px (w-56)
 const TIMELINE_HEIGHT = 200;      // px for bottom timeline and control panel alignment
 
 function formatCacheAge(timestamp: number): string {
@@ -31,6 +29,36 @@ function formatCacheAge(timestamp: number): string {
   if (ageMinutes < 60) return `${ageMinutes}m ago`;
   if (ageHours < 24) return `${ageHours}h ago`;
   return `${Math.floor(ageHours / 24)}d ago`;
+}
+
+function filterAvailableTlesByAnchor(
+  entries: Array<{ epoch: Date; cacheTimestamp: number }>,
+  anchor: Date
+): Array<{ epoch: Date; cacheTimestamp: number }> {
+  const start = anchor.getTime() - SEARCH_RANGE_DAYS * DAY_MS;
+  const end = anchor.getTime() + SEARCH_RANGE_DAYS * DAY_MS;
+  const filtered = entries.filter(e => {
+    const t = e.epoch.getTime();
+    return t >= start && t <= end;
+  });
+  return filtered.length > 0 ? filtered : entries;
+}
+
+function filterTlesByAnchor(entries: SatelliteTLE[], anchor: Date): SatelliteTLE[] {
+  const start = anchor.getTime() - SEARCH_RANGE_DAYS * DAY_MS;
+  const end = anchor.getTime() + SEARCH_RANGE_DAYS * DAY_MS;
+  const filtered = entries.filter(e => {
+    const t = e.epoch.getTime();
+    return t >= start && t <= end;
+  });
+  return filtered.length > 0 ? filtered : entries;
+}
+
+function displayNameFor(noradId: number | null, tle: SatelliteTLE | null, profileNames: Record<number, string>): string {
+  if (noradId !== null && profileNames[noradId]) return profileNames[noradId];
+  if (tle?.name && !tle.name.toUpperCase().startsWith('NORAD')) return tle.name;
+  if (noradId !== null) return `NORAD ${noradId}`;
+  return 'Unknown';
 }
 
 export default function App() {
@@ -48,13 +76,13 @@ export default function App() {
   const [showGrid, setShowGrid] = useState(true);
   const [anchorTime, setAnchorTime] = useState<Date>(new Date());
   const [selectedProfileName, setSelectedProfileName] = useState<string | null>(null);
+  const [profileNames, setProfileNames] = useState<Record<number, string>>({});
   const [showTerminator, setShowTerminator] = useState(true);
   const [showAntiSolar, setShowAntiSolar] = useState(true);
   const [showMainLos, setShowMainLos] = useState(true);
   const [showMainSunLine, setShowMainSunLine] = useState(true);
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [relativeCollapsed, setRelativeCollapsed] = useState(false);
-  const [viewToggleCollapsed, setViewToggleCollapsed] = useState(false);
   const hasAutoLoadedProfile = useRef(false);
 
   // Load satellite catalog
@@ -91,6 +119,26 @@ export default function App() {
     allTles: allTlesB,
   } = useTLE(selectedIdB, currentTime);
 
+  const filteredAvailableTlesA = useMemo(
+    () => filterAvailableTlesByAnchor(availableTlesA, anchorTime),
+    [anchorTime, availableTlesA]
+  );
+
+  const filteredAvailableTlesB = useMemo(
+    () => filterAvailableTlesByAnchor(availableTlesB, anchorTime),
+    [anchorTime, availableTlesB]
+  );
+
+  const filteredAllTlesA = useMemo(
+    () => filterTlesByAnchor(allTlesA, anchorTime),
+    [allTlesA, anchorTime]
+  );
+
+  const filteredAllTlesB = useMemo(
+    () => filterTlesByAnchor(allTlesB, anchorTime),
+    [allTlesB, anchorTime]
+  );
+
   const pickActiveTle = useCallback(
     (
       allTles: SatelliteTLE[],
@@ -122,6 +170,19 @@ export default function App() {
     () => pickActiveTle(allTlesB, preferredEpochB, tleB, anchorTime),
     [allTlesB, preferredEpochB, pickActiveTle, tleB, anchorTime]
   );
+
+  const displayNameA = useMemo(
+    () => displayNameFor(selectedIdA, activeTleA, profileNames),
+    [activeTleA, profileNames, selectedIdA]
+  );
+
+  const displayNameB = useMemo(
+    () => displayNameFor(selectedIdB, activeTleB, profileNames),
+    [activeTleB, profileNames, selectedIdB]
+  );
+
+  const displayTleA = activeTleA ? { ...activeTleA, name: displayNameA } : null;
+  const displayTleB = activeTleB ? { ...activeTleB, name: displayNameB } : null;
 
   // Calculate positions and orbit paths
   const { position: positionA, orbitPath: orbitPathA } = useSatellitePosition(activeTleA, currentTime);
@@ -230,6 +291,7 @@ export default function App() {
     const newName = profile ? profile.name : null;
     setSelectedProfileName(newName);
     if (!profile) {
+      setProfileNames({});
       const now = new Date();
       setAnchorTime(now);
       setCurrentTime(now);
@@ -240,6 +302,11 @@ export default function App() {
       setPreferredEpochB(null);
       return;
     }
+    const nameMap: Record<number, string> = {};
+    for (const sat of profile.satellites) {
+      if (sat.name) nameMap[sat.noradId] = sat.name;
+    }
+    setProfileNames(nameMap);
     // Seed embedded/pasted TLEs from profile
     applyProfileTles(profile);
     const refTime = new Date(profile.anchor);
@@ -274,12 +341,12 @@ export default function App() {
   }, [autoNow]);
 
   return (
-    <div className="h-screen w-screen bg-gray-900 flex">
+    <div className="h-screen w-screen bg-gray-900 flex text-[13px]">
       {/* Collapse toggle button */}
       <button
         onClick={() => setPanelCollapsed(!panelCollapsed)}
-        className="absolute top-4 left-4 z-50 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-md shadow-lg transition-all"
-        style={{ left: panelCollapsed ? '16px' : '400px' }}
+        className="absolute top-3 left-3 z-50 bg-gray-800 hover:bg-gray-700 text-white px-2 py-1 rounded-md shadow-lg transition-all text-xs"
+        style={{ left: panelCollapsed ? '12px' : '340px' }}
         title={panelCollapsed ? 'Show panel' : 'Hide panel'}
       >
         {panelCollapsed ? '→' : '←'}
@@ -287,25 +354,25 @@ export default function App() {
 
       {/* Left sidebar */}
       <div
-        className={`w-[27rem] flex-shrink-0 p-4 overflow-y-auto border-r border-gray-700 transition-all duration-300 ${
-          panelCollapsed ? '-ml-[27rem]' : 'ml-0'
+        className={`w-[21rem] flex-shrink-0 px-3 py-3 overflow-y-auto border-r border-gray-700 transition-all duration-300 ${
+          panelCollapsed ? '-ml-[21rem]' : 'ml-0'
         }`}
       >
-        <h1 className="text-xl font-bold text-white mb-1">SatOrbitViz</h1>
-        <p className="text-gray-400 text-sm mb-2">
+        <h1 className="text-lg font-bold text-white mb-1">SatOrbitViz</h1>
+        <p className="text-gray-400 text-xs mb-2 leading-snug">
           Satellite Orbit Visualization & Conjunction Finder
         </p>
 
         {/* Profiles */}
-        <div className="mb-4 space-y-2">
-          <div className="flex items-center justify-between text-sm text-gray-300">
+        <div className="mb-3 space-y-2">
+          <div className="flex items-center justify-between text-xs text-gray-300">
             <span>Profiles</span>
-            <span className="text-gray-500 text-xs">sets satellites + now</span>
+            <span className="text-gray-500 text-[11px]">sets satellites + now</span>
           </div>
           <select
             value={selectedProfileName ?? ''}
             onChange={(e) => handleSelectProfile(e.target.value)}
-            className="w-full bg-gray-900 text-white rounded px-2 py-1 border border-gray-700"
+            className="w-full bg-gray-900 text-white rounded px-2 py-1 border border-gray-700 text-sm"
           >
             <option value="">-- None --</option>
             {profiles.map(p => (
@@ -315,14 +382,14 @@ export default function App() {
             ))}
           </select>
           {selectedProfileName && (
-            <div className="text-xs text-gray-500">
+            <div className="text-[11px] text-gray-500">
               Anchor: {anchorTime.toISOString().replace('T', ' ').slice(0, 19)} UTC
             </div>
           )}
         </div>
 
         {/* Catalog cache info */}
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
           <span>
             {catalogCacheInfo
               ? `${catalogCacheInfo.count.toLocaleString()} satellites (cached ${formatCacheAge(catalogCacheInfo.timestamp)})`
@@ -346,44 +413,44 @@ export default function App() {
         )}
 
         {/* Satellite Selectors */}
-        <div className="space-y-4 mb-6">
+        <div className="space-y-3 mb-5">
           <SatelliteSelector
             label="Satellite A"
-            color="#3b82f6"
-            catalog={catalog}
-            selectedId={selectedIdA}
-            onSelect={handleSelectA}
-            loading={catalogLoading || loadingA}
-            disabled={catalogLoading}
-            cacheInfo={cacheInfoA}
-            onRefresh={refreshTleA}
-            availableTles={availableTlesA}
-            selectedTleEpoch={preferredEpochA}
-            onSelectTleEpoch={setPreferredEpochA}
-            onPasteTles={handlePasteTlesA}
-            historicalLoading={historicalLoadingA}
-          />
+          color="#3b82f6"
+          catalog={catalog}
+          selectedId={selectedIdA}
+          onSelect={handleSelectA}
+          loading={catalogLoading || loadingA}
+          disabled={catalogLoading}
+          cacheInfo={cacheInfoA}
+          onRefresh={refreshTleA}
+          availableTles={filteredAvailableTlesA}
+          selectedTleEpoch={preferredEpochA}
+          onSelectTleEpoch={setPreferredEpochA}
+          onPasteTles={handlePasteTlesA}
+          historicalLoading={historicalLoadingA}
+        />
 
           <SatelliteSelector
             label="Satellite B"
-            color="#ef4444"
-            catalog={catalog}
-            selectedId={selectedIdB}
-            onSelect={handleSelectB}
-            loading={catalogLoading || loadingB}
-            disabled={catalogLoading}
-            cacheInfo={cacheInfoB}
-            onRefresh={refreshTleB}
-            availableTles={availableTlesB}
-            selectedTleEpoch={preferredEpochB}
-            onSelectTleEpoch={setPreferredEpochB}
-            onPasteTles={handlePasteTlesB}
-            historicalLoading={historicalLoadingB}
-          />
+          color="#ef4444"
+          catalog={catalog}
+          selectedId={selectedIdB}
+          onSelect={handleSelectB}
+          loading={catalogLoading || loadingB}
+          disabled={catalogLoading}
+          cacheInfo={cacheInfoB}
+          onRefresh={refreshTleB}
+          availableTles={filteredAvailableTlesB}
+          selectedTleEpoch={preferredEpochB}
+          onSelectTleEpoch={setPreferredEpochB}
+          onPasteTles={handlePasteTlesB}
+          historicalLoading={historicalLoadingB}
+        />
         </div>
 
         {/* Timeline Controls */}
-        <div className="mb-6">
+        <div className="mb-5">
           <TimelineSlider
             key={selectedProfileName ?? 'none'}
             currentTime={currentTime}
@@ -399,11 +466,11 @@ export default function App() {
         </div>
 
         {/* Orbital Parameters */}
-        <div className="mb-6">
+        <div className="mb-5">
           {pairEnabled ? (
             <OrbitalParams
-              tleA={activeTleA}
-              tleB={activeTleB}
+              tleA={displayTleA}
+              tleB={displayTleB}
               positionA={positionA}
               positionB={positionB}
               currentDistance={currentDistance}
@@ -435,165 +502,131 @@ export default function App() {
         </div>
       </div>
 
-      {/* Main 3D view */}
-      <div className="flex-1 relative" style={{
-        paddingRight: relativeCollapsed ? 16 : RELATIVE_PANEL_WIDTH + 32,
-        paddingBottom: timelineCollapsed ? 16 : TIMELINE_HEIGHT + 24
-      }}>
-        <div
-          className="absolute inset-0"
-          style={{
-            right: relativeCollapsed ? 0 : RELATIVE_PANEL_WIDTH + 32,
-            bottom: (!timelineCollapsed || !viewToggleCollapsed) ? TIMELINE_HEIGHT + 24 : 0
-          }}
-        >
-          <Scene
-            satelliteA={
-              hasSatA && activeTleA
-                ? {
-                    name: activeTleA.name,
-                    position: positionA,
-                    orbitPath: orbitPathA,
-                  }
-                : null
-            }
-            satelliteB={
-              hasSatB && activeTleB
-                ? {
-                    name: activeTleB.name,
-                    position: positionB,
-                    orbitPath: orbitPathB,
-                  }
-                : null
-            }
-            currentTime={currentTime}
-            showGrid={showGrid}
-            showTerminator={showTerminator}
-            showAntiSolar={showAntiSolar}
-            showMainLos={pairEnabled && showMainLos}
-            showMainSunLine={pairEnabled && showMainSunLine}
-          />
-        </div>
-
-        {/* Relative view panel (collapsible) */}
-        <div className="absolute top-4 right-4 z-40">
-          {relativeCollapsed ? (
-            <button
-              onClick={() => setRelativeCollapsed(false)}
-              className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
-            >
-              Show A→B view
-            </button>
-          ) : (
-            <div className="w-96 max-w-[420px] relative">
-              <button
-                onClick={() => setRelativeCollapsed(true)}
-                className="absolute -top-3 -right-3 bg-gray-900 border border-gray-700 text-white rounded-full w-8 h-8 shadow-lg text-sm"
-                title="Collapse view panel"
-              >
-                ×
-              </button>
-              {pairEnabled ? (
-                <RelativeViewPanel
-                  positionA={positionA}
-                  positionB={positionB}
-                  tleA={activeTleA}
-                  tleB={activeTleB}
-                  currentTime={currentTime}
-                />
-              ) : (
-                <div className="bg-gray-800/95 border border-gray-700 rounded-lg p-3 shadow-xl text-sm text-gray-300">
-                  Select two satellites to view the A→B relative panel.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Bottom distance timeline (collapsible) */}
-        <div
-          className="absolute left-4 z-30"
-          style={{
-            right: CONTROL_PANEL_WIDTH + 64,
-            bottom: 16,
-            height: timelineCollapsed ? undefined : TIMELINE_HEIGHT
-          }}
-        >
-        {timelineCollapsed ? (
-          <button
-            onClick={() => setTimelineCollapsed(false)}
-            className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
-          >
-            Show timeline
-          </button>
-        ) : (
-          <DistanceTimeline
-            samples={distanceSamples}
-            currentTime={currentTime}
-            anchorTime={anchorTime}
-            rangeDays={SEARCH_RANGE_DAYS}
-            onTimeChange={handleTimeChange}
-            height={TIMELINE_HEIGHT}
-            currentDistanceKm={currentDistance ?? undefined}
-            onCollapse={() => setTimelineCollapsed(true)}
-          />
-        )}
-      </div>
-
-        {/* Bottom-right view controls (main view) */}
-        <div
-          className="absolute bottom-4 right-4 z-50"
-          style={{ width: CONTROL_PANEL_WIDTH, height: TIMELINE_HEIGHT }}
-        >
-          {viewToggleCollapsed ? (
-            <button
-              onClick={() => setViewToggleCollapsed(false)}
-              className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
-            >
-              Show view toggles
-            </button>
-          ) : (
-            <div className="bg-gray-900/95 border border-gray-700 rounded-lg p-3 text-sm text-gray-200 shadow-lg w-56 h-full space-y-2 flex flex-col relative">
-              <button
-                onClick={() => setViewToggleCollapsed(true)}
-                className="absolute top-2 right-2 text-gray-300 hover:text-white text-xs bg-gray-800/80 border border-gray-700 rounded px-2 py-0.5"
-                title="Collapse view toggles"
-              >
-                ×
-              </button>
-              <div className="text-gray-200 font-semibold pr-6">View toggles</div>
-              <label className="flex items-center gap-2 text-xs">
+      {/* Main 3D view and timelines */}
+      <div className="flex-1 relative p-4">
+        <div className="grid h-full w-full grid-cols-[minmax(0,1fr)_384px] grid-rows-[minmax(0,1fr)_auto] gap-3">
+          <div className="relative rounded-lg overflow-hidden bg-black/40">
+            <Scene
+              satelliteA={
+                hasSatA && activeTleA
+                  ? {
+                      name: displayNameA,
+                      position: positionA,
+                      orbitPath: orbitPathA,
+                    }
+                  : null
+              }
+              satelliteB={
+                hasSatB && activeTleB
+                  ? {
+                      name: displayNameB,
+                      position: positionB,
+                      orbitPath: orbitPathB,
+                    }
+                  : null
+              }
+              currentTime={currentTime}
+              showGrid={showGrid}
+              showTerminator={showTerminator}
+              showAntiSolar={showAntiSolar}
+              showMainLos={pairEnabled && showMainLos}
+              showMainSunLine={pairEnabled && showMainSunLine}
+            />
+            <div className="absolute left-3 right-3 bottom-3 flex flex-wrap gap-3 items-center text-xs text-gray-200 bg-black/60 rounded-md px-3 py-2 border border-gray-700">
+              <label className="flex items-center gap-1">
                 <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} />
-                Show grid
+                Grid
               </label>
-              <label className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-1">
                 <input type="checkbox" checked={showTerminator} onChange={e => setShowTerminator(e.target.checked)} />
-                Show terminator
+                Terminator
               </label>
-              <label className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-1">
                 <input type="checkbox" checked={showAntiSolar} onChange={e => setShowAntiSolar(e.target.checked)} />
-                Show anti-solar point
+                Anti-solar
               </label>
-              <label className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-1">
                 <input
                   type="checkbox"
                   checked={pairEnabled && showMainLos}
                   disabled={!pairEnabled}
                   onChange={e => setShowMainLos(e.target.checked)}
                 />
-                Show LoS A→B
+                LoS A→B
               </label>
-              <label className="flex items-center gap-2 text-xs">
+              <label className="flex items-center gap-1">
                 <input
                   type="checkbox"
                   checked={pairEnabled && showMainSunLine}
                   disabled={!pairEnabled}
                   onChange={e => setShowMainSunLine(e.target.checked)}
                 />
-                Show Sun line at B
+                Sun line at B
+              </label>
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={!relativeCollapsed} onChange={e => setRelativeCollapsed(!e.target.checked)} />
+                Relative view panel
               </label>
             </div>
-          )}
+          </div>
+
+          <div className="relative">
+            {relativeCollapsed ? (
+              <button
+                onClick={() => setRelativeCollapsed(false)}
+                className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
+              >
+                ↑ Show A→B view
+              </button>
+            ) : (
+              <div className="w-full h-full max-w-[420px] relative">
+                <button
+                  onClick={() => setRelativeCollapsed(true)}
+                  className="absolute -top-3 -right-3 bg-gray-900 border border-gray-700 text-white rounded-full w-8 h-8 shadow-lg text-sm"
+                  title="Collapse view panel"
+                >
+                  ←
+                </button>
+                {pairEnabled ? (
+                  <RelativeViewPanel
+                    positionA={positionA}
+                    positionB={positionB}
+                    tleA={activeTleA}
+                    tleB={activeTleB}
+                    currentTime={currentTime}
+                  />
+                ) : (
+                  <div className="bg-gray-800/95 border border-gray-700 rounded-lg p-3 shadow-xl text-sm text-gray-300 w-full">
+                    Select two satellites to view the A→B relative panel.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="col-span-2">
+            {timelineCollapsed ? (
+              <button
+                onClick={() => setTimelineCollapsed(false)}
+                className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
+              >
+                ↑ Show graphs
+              </button>
+            ) : (
+              <TimelineTabs
+                distanceSamples={distanceSamples}
+                currentDistanceKm={currentDistance ?? undefined}
+                currentTime={currentTime}
+                anchorTime={anchorTime}
+                rangeDays={SEARCH_RANGE_DAYS}
+                onTimeChange={handleTimeChange}
+                height={TIMELINE_HEIGHT}
+                onCollapse={() => setTimelineCollapsed(true)}
+                tleSeriesA={filteredAllTlesA}
+                tleSeriesB={filteredAllTlesB}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
