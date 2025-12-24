@@ -1,11 +1,13 @@
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { PerspectiveCamera, Line } from '@react-three/drei';
+import { PerspectiveCamera, Line, Stars } from '@react-three/drei';
 import * as THREE from 'three';
-import type { SatellitePosition, SatelliteTLE } from '../../types/satellite';
-import { EARTH_RADIUS_KM, createSatrec } from '../../lib/orbit';
-import { classifyEarthRelation, computePhaseAngle, computeSunForTime, generateRelativeOrbitTrack } from '../../lib/relativeView';
-import { dot, magnitude, normalize, subtract } from '../../lib/vectorMath';
+import type { SatellitePosition, SatelliteTLE, ECIPosition } from '../../types/satellite';
+import { EARTH_RADIUS_KM } from '../../lib/orbit';
+import { computePhaseAngle } from '../../lib/relativeView';
+import { magnitude, normalize, subtract } from '../../lib/vectorMath';
+import { calculateSunPosition } from '../../lib/sun';
+import { Earth } from '../Globe/Earth';
 
 interface RelativeViewPanelProps {
   positionA: SatellitePosition | null;
@@ -13,6 +15,7 @@ interface RelativeViewPanelProps {
   tleA: SatelliteTLE | null;
   tleB: SatelliteTLE | null;
   currentTime: Date;
+  orbitPathB: ECIPosition[];
 }
 
 // FoV presets in degrees
@@ -33,7 +36,7 @@ const TARGET_HEIGHT_M = 4.1;
 const TARGET_FILL_FRACTION = 0.5; // target spans ~50% of panel width/height in autofit
 const MIN_FOV_DEG = 0.001;
 
-export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTime }: RelativeViewPanelProps) {
+export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTime, orbitPathB }: RelativeViewPanelProps) {
   const [fov, setFov] = useState<number>(45);
   const [autoFit, setAutoFit] = useState<boolean>(true);
   const [showLos, setShowLos] = useState<boolean>(true);
@@ -41,60 +44,23 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
   const [showTrack, setShowTrack] = useState<boolean>(true);
   const [showVelocity, setShowVelocity] = useState<boolean>(true);
 
-  const satrecA = useMemo(() => {
-    if (!tleA) return null;
-    return createSatrec({ line1: tleA.line1, line2: tleA.line2 });
-  }, [tleA]);
-
-  const satrecB = useMemo(() => {
-    if (!tleB) return null;
-    return createSatrec({ line1: tleB.line1, line2: tleB.line2 });
-  }, [tleB]);
+  // Suppress unused variable warnings - these are kept for potential future use
+  void tleA;
+  void tleB;
 
   const derived = useMemo(() => {
     if (!positionA || !positionB) return null;
     const rel = subtract(positionB.eci, positionA.eci);
     const rangeKmRaw = magnitude(rel);
     const rangeKm = Number.isFinite(rangeKmRaw) ? rangeKmRaw : EARTH_RADIUS_KM;
-    const sunEci = computeSunForTime(currentTime);
+    const sunEci = calculateSunPosition(currentTime);
     const phaseAngleDeg = computePhaseAngle(positionA.eci, positionB.eci, sunEci);
-    const earthInfo = classifyEarthRelation(positionA.eci, positionB.eci);
-    const earthFromA = { x: -positionA.eci.x, y: -positionA.eci.y, z: -positionA.eci.z };
 
-    // Scale so the largest object (Earth radius or range) is around unit size
-    const scale = 1 / Math.max(rangeKm, EARTH_RADIUS_KM);
     return {
-      rel,
       rangeKm,
-      sunEci,
-      sunFromB: subtract(sunEci, positionB.eci),
       phaseAngleDeg,
-      earthInfo,
-      scale,
-      velB: subtract(positionB.velocity, positionA.velocity),
-      earthFromA,
     };
   }, [currentTime, positionA, positionB]);
-
-  const relativeTrackEci = useMemo(() => {
-    if (!satrecA || !satrecB) return [];
-    return generateRelativeOrbitTrack(satrecA, satrecB, currentTime);
-  }, [currentTime, satrecA, satrecB]);
-
-  const relativeTrack = useMemo(() => {
-    if (!derived || relativeTrackEci.length === 0) return [];
-    return relativeTrackEci.map(p => eciToThree(p, derived.scale));
-  }, [derived, relativeTrackEci]);
-
-  // Use the forward-looking half of the sampled orbit to avoid doubled lines
-  const trackLinePoints = useMemo(() => {
-    if (relativeTrack.length === 0) return [];
-    const mid = Math.floor(relativeTrack.length / 2);
-    const halfWindow = Math.floor(relativeTrack.length / 4); // show a symmetric segment around the current point
-    const start = Math.max(0, mid - halfWindow);
-    const end = Math.min(relativeTrack.length, mid + halfWindow + 1);
-    return relativeTrack.slice(start, end);
-  }, [relativeTrack]);
 
   const autoFov = derived ? pickFov(derived.rangeKm, true, fov) : fov;
   const displayFov = autoFit && derived ? autoFov : fov;
@@ -109,18 +75,6 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
     if (meters >= 1000) return `${(meters / 1000).toFixed(2)} km`;
     return `${meters.toFixed(0)} m`;
   };
-
-  const earthVisible = useMemo(() => {
-    if (!derived) return false;
-    const viewDir = normalize(derived.rel);
-    const earthDir = normalize(derived.earthFromA);
-    const cosTheta = clamp(dot(viewDir, earthDir), -1, 1);
-    const angle = Math.acos(cosTheta);
-    const earthDistance = magnitude(derived.earthFromA);
-    if (earthDistance <= EARTH_RADIUS_KM) return true;
-    const earthAngular = Math.asin(Math.min(1, EARTH_RADIUS_KM / earthDistance));
-    return angle <= fovRad / 2 + earthAngular;
-  }, [derived, fovRad]);
 
   const formatFov = (deg: number) => {
     if (deg >= 1) return `${deg.toFixed(0)}°`;
@@ -178,23 +132,15 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
           {/* 3D Canvas */}
           <div className="h-56 bg-black rounded overflow-hidden mb-3 relative">
             <RelativeViewCanvas
-              rel={derived.rel}
-              scale={derived.scale}
-              sunEci={derived.sunEci}
+              positionA={positionA!}
+              positionB={positionB!}
+              currentTime={currentTime}
               fov={displayFov}
-              sunFromB={derived.sunFromB}
-              velB={derived.velB}
-              trackPoints={trackLinePoints}
               showLos={showLos}
               showSunLine={showSunLine}
               showTrack={showTrack}
               showVelocity={showVelocity}
-              earthVisible={earthVisible}
-              earthPosition={{
-                x: -positionA!.eci.x,
-                y: -positionA!.eci.y,
-                z: -positionA!.eci.z,
-              }}
+              orbitPathB={orbitPathB}
             />
             <div className="absolute top-1.5 left-2 text-[10px] text-gray-300 bg-black/70 px-1.5 py-0.5 rounded pointer-events-none font-mono">
               N ↑
@@ -260,68 +206,133 @@ function pickFov(rangeKm: number, autoFit: boolean, manualFov: number): number {
 }
 
 interface RelativeViewCanvasProps {
-  rel: { x: number; y: number; z: number };
-  earthPosition: { x: number; y: number; z: number };
-  earthVisible: boolean;
-  scale: number;
-  sunEci: { x: number; y: number; z: number };
-  sunFromB: { x: number; y: number; z: number };
-  velB?: { x: number; y: number; z: number };
-  trackPoints: [number, number, number][];
+  positionA: SatellitePosition;
+  positionB: SatellitePosition;
+  currentTime: Date;
+  fov: number;
   showLos: boolean;
   showSunLine: boolean;
   showTrack: boolean;
   showVelocity: boolean;
-  fov: number;
+  orbitPathB: ECIPosition[];
+}
+
+// Convert ECI to Three.js with scaling (camera-relative coordinate system)
+function eciToThreeScaled(vec: { x: number; y: number; z: number }, scale: number): [number, number, number] {
+  return [vec.x * scale, vec.z * scale, -vec.y * scale];
 }
 
 function RelativeViewCanvas({
-  rel,
-  earthPosition,
-  earthVisible,
-  scale,
-  sunEci,
-  sunFromB,
-  velB,
-  trackPoints,
+  positionA,
+  positionB,
+  currentTime,
+  fov,
   showLos,
   showSunLine,
   showTrack,
   showVelocity,
-  fov
+  orbitPathB,
 }: RelativeViewCanvasProps) {
-  const safeScale = Number.isFinite(scale) ? scale : 0;
-  const relThree = useMemo(() => eciToThree(rel, safeScale), [rel, safeScale]);
-  const earthThree = useMemo(() => eciToThree(earthPosition, safeScale), [earthPosition, safeScale]);
+  // Compute relative position and scaling
+  const rel = useMemo(() => subtract(positionB.eci, positionA.eci), [positionA.eci, positionB.eci]);
+  const rangeKm = useMemo(() => {
+    const r = magnitude(rel);
+    return Number.isFinite(r) ? r : EARTH_RADIUS_KM;
+  }, [rel]);
+
+  // Scale so the scene fits nicely - relative coords centered at camera
+  const scale = useMemo(() => 1 / Math.max(rangeKm, EARTH_RADIUS_KM), [rangeKm]);
+
+  // Satellite B position in scaled Three.js coords (camera at origin)
+  const relThree = useMemo(() => eciToThreeScaled(rel, scale), [rel, scale]);
+
+  // Earth position (negative of A's position, scaled)
+  const earthPos = useMemo(() => ({
+    x: -positionA.eci.x,
+    y: -positionA.eci.y,
+    z: -positionA.eci.z,
+  }), [positionA.eci]);
+  const earthThree = useMemo(() => eciToThreeScaled(earthPos, scale), [earthPos, scale]);
+  const earthRadiusScaled = EARTH_RADIUS_KM * scale;
+
+  // Sun direction (normalized, for lighting)
+  const sunEci = useMemo(() => calculateSunPosition(currentTime), [currentTime]);
   const sunDirThree = useMemo(() => {
-    const vec = eciToThree(normalize(sunEci), 1);
+    const vec = eciToThreeScaled(normalize(sunEci), 1);
     const v = new THREE.Vector3(...vec);
-    if (v.length() === 0) return new THREE.Vector3(0, 0, 1);
-    return v.normalize();
+    return v.length() === 0 ? new THREE.Vector3(0, 0, 1) : v.normalize();
   }, [sunEci]);
+
+  // Sun direction from B (for sun line indicator)
   const sunFromBDir = useMemo(() => {
-    const vec = eciToThree(normalize(sunFromB), 1);
+    const dir = subtract(sunEci, positionB.eci);
+    const vec = eciToThreeScaled(normalize(dir), 1);
     const v = new THREE.Vector3(...vec);
-    if (v.length() === 0) return new THREE.Vector3(0, 0, 1);
-    return v.normalize();
-  }, [sunFromB]);
+    return v.length() === 0 ? new THREE.Vector3(0, 0, 1) : v.normalize();
+  }, [sunEci, positionB.eci]);
 
-  const panelSize = useMemo(() => {
-    const width = (TARGET_TOTAL_WIDTH_M / 1000) * safeScale;
-    const height = (TARGET_HEIGHT_M / 1000) * safeScale;
-    return { width, height };
-  }, [safeScale]);
-
-  const earthRadiusScaled = EARTH_RADIUS_KM * safeScale;
-
+  // DESIGN DECISION: "Camera-at-A" model
+  // We show B's absolute orbit translated so A is at origin, NOT true relative motion.
+  // True relative motion (B(t)-A(t) sampled over time) produces complex curves that
+  // users found confusing. This approach shows "what B's orbit looks like from A's
+  // current position" - like mounting a camera on A. Each frame updates as A moves.
+  // Consequence: velocity arrow, orbit tangent, and panel orientation all use
+  // absolute velocity for internal consistency.
   const velocityDir = useMemo(() => {
-    if (!velB) return null;
-    const vec = eciToThree(velB, 1);
+    const vec = eciToThreeScaled(positionB.velocity, 1);
     const v = new THREE.Vector3(...vec);
-    if (v.length() === 0) return null;
-    return v.normalize();
-  }, [velB]);
+    return v.length() === 0 ? null : v.normalize();
+  }, [positionB.velocity]);
 
+  // Transform B's orbit path to camera-centered coords
+  // For narrow FoVs (< 10°), only show segment nearest to satellite
+  const trackPoints = useMemo(() => {
+    if (orbitPathB.length === 0) return [];
+
+    // Transform all points to camera-relative coords
+    const allPoints = orbitPathB.map(p => {
+      const relToA = {
+        x: p.x - positionA.eci.x,
+        y: p.y - positionA.eci.y,
+        z: p.z - positionA.eci.z,
+      };
+      return eciToThreeScaled(relToA, scale);
+    });
+
+    // For wide FoV, show full track
+    if (fov >= 10) return allPoints;
+
+    // For narrow FoV, find the point closest to B's current position and show segment around it
+    const bPos = positionB.eci;
+    let closestIdx = 0;
+    let closestDist = Infinity;
+    for (let i = 0; i < orbitPathB.length; i++) {
+      const p = orbitPathB[i]!;
+      const dx = p.x - bPos.x;
+      const dy = p.y - bPos.y;
+      const dz = p.z - bPos.z;
+      const dist = dx * dx + dy * dy + dz * dz;
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestIdx = i;
+      }
+    }
+
+    // Take ~10% of orbit on each side (about 36 points each way for 360-point orbit)
+    const segmentSize = Math.max(20, Math.floor(orbitPathB.length * 0.1));
+    const startIdx = Math.max(0, closestIdx - segmentSize);
+    const endIdx = Math.min(orbitPathB.length - 1, closestIdx + segmentSize);
+
+    return allPoints.slice(startIdx, endIdx + 1);
+  }, [orbitPathB, positionA.eci, positionB.eci, scale, fov]);
+
+  // Panel size for satellite body
+  const panelSize = useMemo(() => ({
+    width: (TARGET_TOTAL_WIDTH_M / 1000) * scale,
+    height: (TARGET_HEIGHT_M / 1000) * scale,
+  }), [scale]);
+
+  // Panel rotation based on velocity and sun
   const panelRotation = useMemo(() => {
     const q = new THREE.Quaternion();
     const longAxis = velocityDir ?? new THREE.Vector3(1, 0, 0);
@@ -342,74 +353,105 @@ function RelativeViewCanvas({
     return q;
   }, [sunFromBDir, velocityDir]);
 
+  // Earth visibility check - only render if Earth is geometrically in FoV
+  const earthVisible = useMemo(() => {
+    const fovRad = (fov * Math.PI) / 180;
+    // View direction (camera at origin looking at satellite B)
+    const viewDir = normalize(rel);
+    // Earth direction (from camera to Earth center)
+    const earthDir = normalize(earthPos);
+    // Angle between view and Earth
+    const dot = viewDir.x * earthDir.x + viewDir.y * earthDir.y + viewDir.z * earthDir.z;
+    const angle = Math.acos(Math.min(1, Math.max(-1, dot)));
+    // Earth angular radius from camera
+    const earthDistance = magnitude(earthPos);
+    if (earthDistance <= EARTH_RADIUS_KM) return true; // Inside Earth (shouldn't happen)
+    const earthAngular = Math.asin(Math.min(1, EARTH_RADIUS_KM / earthDistance));
+    // Earth is visible if within half-FoV + Earth's angular radius
+    return angle <= fovRad / 2 + earthAngular;
+  }, [fov, rel, earthPos]);
+
+  // Use full textured Earth only for wide FoVs (>= 10°), otherwise lightweight proxy
+  const useFullEarth = fov >= 10;
+
   return (
     <Canvas>
-      <RelativeScene
-        fov={fov}
-        relThree={relThree}
-        earthThree={earthThree}
-        earthRadiusScaled={earthRadiusScaled}
-        scale={safeScale}
-        panelRotation={panelRotation}
-        panelSize={panelSize}
-        sunDirThree={sunDirThree}
-        sunFromBDir={sunFromBDir}
-        velocityDir={velocityDir}
-        showLos={showLos}
-        showSunLine={showSunLine}
-        showTrack={showTrack}
-        showVelocity={showVelocity}
-        trackPoints={trackPoints}
-        earthVisible={earthVisible}
-      />
+      <Suspense fallback={null}>
+        <RelativeScene
+          relThree={relThree}
+          earthThree={earthThree}
+          earthRadiusScaled={earthRadiusScaled}
+          currentTime={currentTime}
+          sunDirThree={sunDirThree}
+          sunFromBDir={sunFromBDir}
+          fov={fov}
+          showLos={showLos}
+          showSunLine={showSunLine}
+          showTrack={showTrack}
+          showVelocity={showVelocity}
+          trackPoints={trackPoints}
+          velocityDir={velocityDir}
+          panelSize={panelSize}
+          panelRotation={panelRotation}
+          scale={scale}
+          earthVisible={earthVisible}
+          useFullEarth={useFullEarth}
+        />
+      </Suspense>
     </Canvas>
   );
 }
 
 interface RelativeSceneProps {
-  fov: number;
   relThree: [number, number, number];
   earthThree: [number, number, number];
   earthRadiusScaled: number;
-  scale: number;
-  panelRotation: THREE.Quaternion;
-  panelSize: { width: number; height: number };
+  currentTime: Date;
   sunDirThree: THREE.Vector3;
   sunFromBDir: THREE.Vector3;
-  trackPoints?: [number, number, number][];
-  velocityDir: THREE.Vector3 | null;
+  fov: number;
   showLos: boolean;
   showSunLine: boolean;
   showTrack: boolean;
   showVelocity: boolean;
+  trackPoints: [number, number, number][];
+  velocityDir: THREE.Vector3 | null;
+  panelSize: { width: number; height: number };
+  panelRotation: THREE.Quaternion;
+  scale: number;
   earthVisible: boolean;
+  useFullEarth: boolean;
 }
 
 function RelativeScene({
-  fov,
   relThree,
   earthThree,
   earthRadiusScaled,
-  scale,
-  panelRotation,
-  panelSize,
+  currentTime,
   sunDirThree,
   sunFromBDir,
-  trackPoints = [],
-  velocityDir,
+  fov,
   showLos,
   showSunLine,
   showTrack,
   showVelocity,
+  trackPoints,
+  velocityDir,
+  panelSize,
+  panelRotation,
+  scale,
   earthVisible,
+  useFullEarth,
 }: RelativeSceneProps) {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
+
+  // Camera at origin, looking at satellite B
   useFrame(() => {
     if (cameraRef.current) {
       const cam = cameraRef.current;
-      const viewVec = new THREE.Vector3(relThree[0], relThree[1], relThree[2]).normalize();
-      const north = new THREE.Vector3(0, 1, 0); // Earth +Z in Three coords
-      let up = north.clone().sub(viewVec.clone().multiplyScalar(north.dot(viewVec))); // project north onto view plane
+      const viewVec = new THREE.Vector3(...relThree).normalize();
+      const north = new THREE.Vector3(0, 1, 0);
+      let up = north.clone().sub(viewVec.clone().multiplyScalar(north.dot(viewVec)));
       if (up.lengthSq() < 1e-6) {
         const east = new THREE.Vector3(1, 0, 0);
         up = east.clone().sub(viewVec.clone().multiplyScalar(east.dot(viewVec)));
@@ -420,136 +462,144 @@ function RelativeScene({
       up.normalize();
       cam.up.copy(up);
       cam.position.set(0, 0, 0.00001);
-      cam.lookAt(relThree[0], relThree[1], relThree[2]);
+      cam.lookAt(...relThree);
       cam.updateProjectionMatrix();
     }
   });
 
   return (
     <>
-      <PerspectiveCamera ref={cameraRef} makeDefault fov={fov} near={1e-6} far={50} />
-      <color attach="background" args={['#05070d']} />
-      <ambientLight intensity={0.6} />
+      <PerspectiveCamera ref={cameraRef} makeDefault fov={fov} near={1e-7} far={100} />
+      <color attach="background" args={['#000008']} />
+
+      {/* Lighting - same as main view */}
+      <ambientLight intensity={0.08} />
       <directionalLight
-        position={sunDirThree.clone().multiplyScalar(-10).toArray() as [number, number, number]}
-        intensity={1.2}
-        color="#fff9ec"
+        position={sunDirThree.clone().multiplyScalar(50).toArray() as [number, number, number]}
+        intensity={3.2}
+        color="#fffaf0"
       />
-      <group>
-        {showTrack && trackPoints.length > 1 && (
-          <Line
-            points={trackPoints}
-            color="#22c55e"
-            lineWidth={2}
-            renderOrder={0}
-            depthTest={false}
-            depthWrite={false}
-          />
-        )}
-        {/* Satellite body container: solar | gap | antenna | gap | solar */}
-        <group position={relThree} quaternion={panelRotation}>
-          {TARGET_SEGMENTS_M.map((segment, idx) => {
-            const leftOffsetM =
-              -TARGET_TOTAL_WIDTH_M / 2 +
-              TARGET_SEGMENTS_M.slice(0, idx).reduce((a, b) => a + b, 0) +
-              (idx > 0 ? idx * TARGET_GAP_M : 0) +
-              segment / 2;
-            const offsetX = (leftOffsetM / 1000) * scale;
-            return (
-              <mesh key={idx} position={[offsetX, 0, 0]} renderOrder={5}>
-                <planeGeometry args={[ (segment / 1000) * scale, panelSize.height ]} />
-                <meshStandardMaterial
-                  color="#ef4444"
-                  emissive="#ff7f7f"
-                  emissiveIntensity={0.3}
-                  side={THREE.DoubleSide}
-                />
-              </mesh>
-            );
-          })}
-        </group>
-        {/* Sun direction indicator (thin dashed yellow) */}
-        {showSunLine && (
-          <Line
-            points={[
-              [relThree[0], relThree[1], relThree[2]],
-              [relThree[0] + sunFromBDir.x * 2, relThree[1] + sunFromBDir.y * 2, relThree[2] + sunFromBDir.z * 2],
-            ]}
-            color="#facc15"
-            lineWidth={1}
-            dashed
-            dashSize={0.2}
-            gapSize={0.1}
-            renderOrder={6}
-          />
-        )}
-        {/* Nadir line from satellite to Earth center */}
+      <hemisphereLight args={['#87ceeb', '#000022', 0.2]} />
+
+      {/* Starfield */}
+      <Stars radius={100} depth={50} count={3000} factor={4} saturation={0} fade />
+
+      {/* Earth - only render if visible, use full component for wide FoV, lightweight for narrow */}
+      {earthVisible && (
+        useFullEarth ? (
+          <group position={earthThree} scale={[earthRadiusScaled, earthRadiusScaled, earthRadiusScaled]}>
+            <Earth currentTime={currentTime} showGrid={false} />
+          </group>
+        ) : (
+          <mesh position={earthThree}>
+            <sphereGeometry args={[earthRadiusScaled, 32, 32]} />
+            <meshStandardMaterial color="#1e3a5f" />
+          </mesh>
+        )
+      )}
+
+      {/* Orbit track */}
+      {showTrack && trackPoints.length > 1 && (
+        <Line
+          points={trackPoints}
+          color="#22c55e"
+          lineWidth={2}
+        />
+      )}
+
+      {/* Satellite B body - solar panels */}
+      <group position={relThree} quaternion={panelRotation}>
+        {TARGET_SEGMENTS_M.map((segment, idx) => {
+          const leftOffsetM =
+            -TARGET_TOTAL_WIDTH_M / 2 +
+            TARGET_SEGMENTS_M.slice(0, idx).reduce((a, b) => a + b, 0) +
+            (idx > 0 ? idx * TARGET_GAP_M : 0) +
+            segment / 2;
+          const offsetX = (leftOffsetM / 1000) * scale;
+          return (
+            <mesh key={idx} position={[offsetX, 0, 0]} renderOrder={5}>
+              <planeGeometry args={[(segment / 1000) * scale, panelSize.height]} />
+              <meshStandardMaterial
+                color="#ef4444"
+                emissive="#ff7f7f"
+                emissiveIntensity={0.3}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+          );
+        })}
+      </group>
+
+      {/* Nadir line from satellite to Earth center */}
+      <Line
+        points={[relThree, earthThree]}
+        color="#6b7280"
+        lineWidth={1}
+        dashed
+        dashSize={0.25}
+        gapSize={0.15}
+      />
+
+      {/* Line of sight from camera to satellite */}
+      {showLos && (
+        <Line
+          points={[[0, 0, 0], relThree]}
+          color="#38bdf8"
+          lineWidth={0.75}
+          renderOrder={10}
+        />
+      )}
+
+      {/* Sun direction from B */}
+      {showSunLine && (
         <Line
           points={[
-            [relThree[0], relThree[1], relThree[2]],
-            [earthThree[0], earthThree[1], earthThree[2]],
+            relThree,
+            [
+              relThree[0] + sunFromBDir.x * 2,
+              relThree[1] + sunFromBDir.y * 2,
+              relThree[2] + sunFromBDir.z * 2,
+            ],
           ]}
-          color="#6b7280"
+          color="#facc15"
           lineWidth={1}
           dashed
-          dashSize={0.25}
-          gapSize={0.15}
+          dashSize={0.2}
+          gapSize={0.1}
           renderOrder={6}
         />
-        {/* Earth sphere if within view volume */}
-        {earthVisible && (
-          <mesh position={earthThree} renderOrder={3}>
-            <sphereGeometry args={[earthRadiusScaled, 32, 32]} />
-            <meshStandardMaterial color="#1e3a8a" transparent opacity={0.35} />
-          </mesh>
-        )}
+      )}
 
-        {/* Sightline (LoS) */}
-        {showLos && (
+      {/* Velocity direction (absolute - tangent to orbit track) */}
+      {showVelocity && velocityDir && (
+        <>
           <Line
             points={[
-              [0, 0, 0],
-              [relThree[0], relThree[1], relThree[2]],
-            ]}
-            color="#38bdf8"
-            lineWidth={0.75}
-            renderOrder={10}
-          />
-        )}
-        {/* Velocity direction from B */}
-        {showVelocity && velocityDir && (
-          <>
-            <Line
-              points={[
-                [relThree[0], relThree[1], relThree[2]],
-                [relThree[0] + velocityDir.x * 2, relThree[1] + velocityDir.y * 2, relThree[2] + velocityDir.z * 2],
-              ]}
-              color="#f97316"
-              lineWidth={1.2}
-              renderOrder={11}
-            />
-            <mesh
-              position={[
+              relThree,
+              [
                 relThree[0] + velocityDir.x * 2,
                 relThree[1] + velocityDir.y * 2,
                 relThree[2] + velocityDir.z * 2,
-              ]}
-              renderOrder={11}
-            >
-              <coneGeometry args={[0.05, 0.12, 8]} />
-              <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={0.4} />
-            </mesh>
-          </>
-        )}
-      </group>
+              ],
+            ]}
+            color="#f97316"
+            lineWidth={1.2}
+            renderOrder={11}
+          />
+          <mesh
+            position={[
+              relThree[0] + velocityDir.x * 2,
+              relThree[1] + velocityDir.y * 2,
+              relThree[2] + velocityDir.z * 2,
+            ]}
+            renderOrder={11}
+          >
+            <coneGeometry args={[0.05, 0.12, 8]} />
+            <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={0.4} />
+          </mesh>
+        </>
+      )}
     </>
   );
 }
 
-function eciToThree(vec: { x: number; y: number; z: number }, scale: number): [number, number, number] {
-  return [vec.x * scale, vec.z * scale, -vec.y * scale];
-}
-
-function clamp(val: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, val));
-}

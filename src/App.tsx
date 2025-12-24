@@ -613,6 +613,7 @@ export default function App() {
                       tleA={activeTleA}
                       tleB={activeTleB}
                       currentTime={currentTime}
+                      orbitPathB={orbitPathB}
                     />
                   ) : (
                     <div className="p-3 text-sm text-gray-300">
