@@ -231,11 +231,10 @@ export default function App() {
   // Calculate positions and orbit paths
   const { position: positionA, orbitPath: orbitPathA } = useSatellitePosition(activeTleA, currentTime);
   const { position: positionB, orbitPath: orbitPathB } = useSatellitePosition(activeTleB, currentTime);
-  const profileActive = !!selectedProfileName;
   const hasSatA = !!activeTleA && !!positionA;
   const hasSatB = !!activeTleB && !!positionB;
   const hasPair = hasSatA && hasSatB;
-  const pairEnabled = profileActive && hasPair;
+  const pairEnabled = hasPair; // Works with or without a profile
   useEffect(() => {
     if (!hasPair) {
       setShowMainLos(false);
@@ -285,11 +284,29 @@ export default function App() {
   // Handlers
   const handleSelectA = useCallback((entry: SatelliteCatalogEntry | null) => {
     setSelectedIdA(entry?.noradId ?? null);
-  }, []);
+    setPreferredEpochA(null);
+    // Clear profile when user manually changes satellite, reset anchor to now
+    if (selectedProfileName) {
+      setSelectedProfileName(null);
+      setProfileNames({});
+      const now = new Date();
+      setAnchorTime(now);
+      setCurrentTime(now);
+    }
+  }, [selectedProfileName, setPreferredEpochA]);
 
   const handleSelectB = useCallback((entry: SatelliteCatalogEntry | null) => {
     setSelectedIdB(entry?.noradId ?? null);
-  }, []);
+    setPreferredEpochB(null);
+    // Clear profile when user manually changes satellite, reset anchor to now
+    if (selectedProfileName) {
+      setSelectedProfileName(null);
+      setProfileNames({});
+      const now = new Date();
+      setAnchorTime(now);
+      setCurrentTime(now);
+    }
+  }, [selectedProfileName, setPreferredEpochB]);
 
   const handleJumpToTime = useCallback((time: Date) => {
     setAutoNow(false);
@@ -309,11 +326,17 @@ export default function App() {
   }, [anchorTime, currentTime]);
 
   const handleNow = useCallback(() => {
-    if (selectedProfileName) return;
     const now = new Date();
-    setAnchorTime(now);
-    setCurrentTime(now);
-    setAutoNow(false);
+    if (selectedProfileName) {
+      // Profile active: just jump to now (button is disabled if now is outside window)
+      setCurrentTime(now);
+      setAutoNow(false);
+    } else {
+      // No profile: reset anchor to now
+      setAnchorTime(now);
+      setCurrentTime(now);
+      setAutoNow(false);
+    }
   }, [selectedProfileName]);
 
   const handlePasteTlesA = useCallback(async (text: string, opts?: { forceNorad?: boolean }): Promise<number> => {
