@@ -139,13 +139,22 @@ export function DistanceTimeline({
     setHover(null);
   }, []);
 
-  const xTicks = (() => {
-    const ticks: number[] = [start, anchorTime.getTime(), end];
-    const mid1 = start + (end - start) / 4;
-    const mid2 = start + (end - start) * 3 / 4;
-    ticks.push(mid1, mid2);
-    return Array.from(new Set(ticks.map(t => Math.round(t)))).sort((a, b) => a - b);
-  })();
+  // Generate ticks at midnight UTC for each day in the range
+  const xTicks = useMemo(() => {
+    const ticks: number[] = [];
+    const startDate = new Date(start);
+    // Round up to next midnight UTC
+    const firstMidnight = new Date(Date.UTC(
+      startDate.getUTCFullYear(),
+      startDate.getUTCMonth(),
+      startDate.getUTCDate() + 1,
+      0, 0, 0, 0
+    ));
+    for (let t = firstMidnight.getTime(); t <= end; t += 24 * 60 * 60 * 1000) {
+      ticks.push(t);
+    }
+    return ticks;
+  }, [start, end]);
 
   const yTicks = useMemo(() => {
     const span = max - min;
