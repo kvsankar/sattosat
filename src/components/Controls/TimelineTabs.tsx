@@ -62,7 +62,17 @@ export function TimelineTabs({
     >
       {/* Header bar with tabs and collapse */}
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-800">
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-2">
+          {onCollapse && (
+            <button
+              onClick={onCollapse}
+              className="w-7 h-7 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded text-sm flex items-center justify-center border border-gray-700 flex-shrink-0"
+              title="Collapse panel"
+            >
+              ▾
+            </button>
+          )}
+          <div className="flex items-center gap-0.5">
           <TabButton
             id="distance"
             active={activeTab}
@@ -80,6 +90,7 @@ export function TimelineTabs({
               title={m.label}
             />
           ))}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {activeTab === 'distance' && typeof currentDistanceKm === 'number' && (
@@ -91,17 +102,6 @@ export function TimelineTabs({
             <span className="text-[11px] text-gray-400">
               {activeMetric.label} ({activeMetric.unit || '–'})
             </span>
-          )}
-          {onCollapse && (
-            <button
-              onClick={onCollapse}
-              className="text-gray-500 hover:text-white p-1 transition-colors"
-              title="Collapse panel"
-            >
-              <svg className="w-3 h-3 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
           )}
         </div>
       </div>
