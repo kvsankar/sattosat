@@ -503,6 +503,59 @@ function ParameterGraph({
             {/* Hover indicator */}
             {hover && (() => {
               const hoverX = scaleX(hover.time.getTime());
+              const calloutH = 34;
+              const calloutW = 140;
+              const gap = 8;
+              const minY = paddingTop;
+              const maxY = viewBoxHeight - paddingBottom;
+
+              // Compute initial callout positions
+              const computeCalloutY = (pointY: number) => {
+                const belowY = pointY + gap;
+                const aboveY = pointY - gap - calloutH;
+                const wouldClipBelow = belowY + calloutH > maxY;
+                const wouldClipAbove = aboveY < minY;
+                if (wouldClipBelow && !wouldClipAbove) return aboveY;
+                return belowY;
+              };
+
+              const calloutAY = hover.nearPointA ? computeCalloutY(hover.nearPointA.y) : null;
+              let calloutBY = hover.nearPointB ? computeCalloutY(hover.nearPointB.y) : null;
+
+              // Check for overlap and adjust if both callouts exist
+              if (calloutAY !== null && calloutBY !== null && hover.nearPointA && hover.nearPointB) {
+                const aTop = calloutAY;
+                const aBottom = calloutAY + calloutH;
+                const bTop = calloutBY;
+                const bBottom = calloutBY + calloutH;
+
+                // Check if they overlap
+                if (!(aBottom <= bTop || bBottom <= aTop)) {
+                  // They overlap - try to reposition B
+                  // If A is below its point, put B above its point (or vice versa)
+                  const aIsBelow = calloutAY > hover.nearPointA.y;
+                  if (aIsBelow) {
+                    // Try putting B above
+                    const newBY = hover.nearPointB.y - gap - calloutH;
+                    if (newBY >= minY) {
+                      calloutBY = newBY;
+                    } else {
+                      // Can't go above, stack B below A
+                      calloutBY = aBottom + 4;
+                    }
+                  } else {
+                    // A is above, try putting B below
+                    const newBY = hover.nearPointB.y + gap;
+                    if (newBY + calloutH <= maxY) {
+                      calloutBY = newBY;
+                    } else {
+                      // Can't go below, stack B above A
+                      calloutBY = aTop - calloutH - 4;
+                    }
+                  }
+                }
+              }
+
               return (
                 <>
                   <line
@@ -516,94 +569,80 @@ function ParameterGraph({
                   />
 
                   {/* Floating callout for series A */}
-                  {hover.nearPointA && (() => {
-                    const calloutH = 34;
-                    const wouldClipBottom = hover.nearPointA.y + 8 + calloutH > viewBoxHeight - paddingBottom;
-                    const wouldClipTop = hover.nearPointA.y - 8 - calloutH < paddingTop;
-                    const yOffset = wouldClipBottom && !wouldClipTop ? -(8 + calloutH) : 8;
-                    const calloutY = hover.nearPointA.y + yOffset;
-                    return (
-                      <g>
-                        <circle cx={hover.nearPointA.x} cy={hover.nearPointA.y} r={5} fill="#3b82f6" stroke="#fff" strokeWidth="1.5" />
-                        <rect
-                          x={hover.nearPointA.x + 8}
-                          y={calloutY}
-                          width={140}
-                          height={calloutH}
-                          rx={3}
-                          fill="#1e3a5f"
-                          stroke="#3b82f6"
-                          strokeWidth="1"
-                        />
-                        <text
-                          x={hover.nearPointA.x + 14}
-                          y={calloutY + 13}
-                          fontSize="10"
-                          fill="#60a5fa"
-                          fontFamily="monospace"
-                        >
-                          {formatCalloutTime(hover.nearPointA.time)}
-                        </text>
-                        <text
-                          x={hover.nearPointA.x + 14}
-                          y={calloutY + 27}
-                          fontSize="11"
-                          fill="#3b82f6"
-                          fontFamily="monospace"
-                        >
-                          {formatValue(hover.nearPointA.value)}
-                          {hover.nearPointA.delta !== undefined && (
-                            <tspan fill="#60a5fa"> ({formatDelta(hover.nearPointA.delta)})</tspan>
-                          )}
-                        </text>
-                      </g>
-                    );
-                  })()}
+                  {hover.nearPointA && calloutAY !== null && (
+                    <g>
+                      <circle cx={hover.nearPointA.x} cy={hover.nearPointA.y} r={5} fill="#3b82f6" stroke="#fff" strokeWidth="1.5" />
+                      <rect
+                        x={hover.nearPointA.x + gap}
+                        y={calloutAY}
+                        width={calloutW}
+                        height={calloutH}
+                        rx={3}
+                        fill="#1e3a5f"
+                        stroke="#3b82f6"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={hover.nearPointA.x + gap + 6}
+                        y={calloutAY + 13}
+                        fontSize="10"
+                        fill="#60a5fa"
+                        fontFamily="monospace"
+                      >
+                        {formatCalloutTime(hover.nearPointA.time)}
+                      </text>
+                      <text
+                        x={hover.nearPointA.x + gap + 6}
+                        y={calloutAY + 27}
+                        fontSize="11"
+                        fill="#3b82f6"
+                        fontFamily="monospace"
+                      >
+                        {formatValue(hover.nearPointA.value)}
+                        {hover.nearPointA.delta !== undefined && (
+                          <tspan fill="#60a5fa"> ({formatDelta(hover.nearPointA.delta)})</tspan>
+                        )}
+                      </text>
+                    </g>
+                  )}
 
                   {/* Floating callout for series B */}
-                  {hover.nearPointB && (() => {
-                    const calloutH = 34;
-                    const wouldClipBottom = hover.nearPointB.y + 8 + calloutH > viewBoxHeight - paddingBottom;
-                    const wouldClipTop = hover.nearPointB.y - 8 - calloutH < paddingTop;
-                    const yOffset = wouldClipBottom && !wouldClipTop ? -(8 + calloutH) : 8;
-                    const calloutY = hover.nearPointB.y + yOffset;
-                    return (
-                      <g>
-                        <circle cx={hover.nearPointB.x} cy={hover.nearPointB.y} r={5} fill="#ef4444" stroke="#fff" strokeWidth="1.5" />
-                        <rect
-                          x={hover.nearPointB.x + 8}
-                          y={calloutY}
-                          width={140}
-                          height={calloutH}
-                          rx={3}
-                          fill="#3f1f1f"
-                          stroke="#ef4444"
-                          strokeWidth="1"
-                        />
-                        <text
-                          x={hover.nearPointB.x + 14}
-                          y={calloutY + 13}
-                          fontSize="10"
-                          fill="#f87171"
-                          fontFamily="monospace"
-                        >
-                          {formatCalloutTime(hover.nearPointB.time)}
-                        </text>
-                        <text
-                          x={hover.nearPointB.x + 14}
-                          y={calloutY + 27}
-                          fontSize="11"
-                          fill="#ef4444"
-                          fontFamily="monospace"
-                        >
-                          {formatValue(hover.nearPointB.value)}
-                          {hover.nearPointB.delta !== undefined && (
-                            <tspan fill="#f87171"> ({formatDelta(hover.nearPointB.delta)})</tspan>
-                          )}
-                        </text>
-                      </g>
-                    );
-                  })()}
+                  {hover.nearPointB && calloutBY !== null && (
+                    <g>
+                      <circle cx={hover.nearPointB.x} cy={hover.nearPointB.y} r={5} fill="#ef4444" stroke="#fff" strokeWidth="1.5" />
+                      <rect
+                        x={hover.nearPointB.x + gap}
+                        y={calloutBY}
+                        width={calloutW}
+                        height={calloutH}
+                        rx={3}
+                        fill="#3f1f1f"
+                        stroke="#ef4444"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={hover.nearPointB.x + gap + 6}
+                        y={calloutBY + 13}
+                        fontSize="10"
+                        fill="#f87171"
+                        fontFamily="monospace"
+                      >
+                        {formatCalloutTime(hover.nearPointB.time)}
+                      </text>
+                      <text
+                        x={hover.nearPointB.x + gap + 6}
+                        y={calloutBY + 27}
+                        fontSize="11"
+                        fill="#ef4444"
+                        fontFamily="monospace"
+                      >
+                        {formatValue(hover.nearPointB.value)}
+                        {hover.nearPointB.delta !== undefined && (
+                          <tspan fill="#f87171"> ({formatDelta(hover.nearPointB.delta)})</tspan>
+                        )}
+                      </text>
+                    </g>
+                  )}
                 </>
               );
             })()}
