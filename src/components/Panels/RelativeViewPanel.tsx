@@ -143,7 +143,7 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
   );
 
   return (
-    <div className="bg-gray-800/95 border border-gray-700 rounded-lg p-3 shadow-xl text-sm text-gray-200">
+    <div className="p-3 text-sm text-gray-200">
       <div className="flex items-center justify-between mb-2">
         <div className="flex-1 pr-4 min-w-0">
           <div className="text-white font-semibold">View from Satellite A</div>

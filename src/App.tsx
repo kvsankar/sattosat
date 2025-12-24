@@ -575,32 +575,53 @@ export default function App() {
             {relativeCollapsed ? (
               <button
                 onClick={() => setRelativeCollapsed(false)}
-                className="bg-gray-900/90 border border-gray-700 text-white px-3 py-2 rounded shadow-lg text-xs"
+                className="bg-gray-900 border border-gray-700 rounded-lg flex items-center gap-2 px-3 py-2 text-left group hover:border-gray-600 transition-colors"
               >
-                ↑ Show A→B view
+                <svg
+                  className="w-3 h-3 text-gray-500 group-hover:text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide group-hover:text-gray-300">
+                  A→B View
+                </span>
               </button>
             ) : (
-              <div className="w-full h-full max-w-[420px] relative">
-                <button
-                  onClick={() => setRelativeCollapsed(true)}
-                  className="absolute -top-3 -right-3 bg-gray-900 border border-gray-700 text-white rounded-full w-8 h-8 shadow-lg text-sm"
-                  title="Collapse view panel"
-                >
-                  ←
-                </button>
-                {pairEnabled ? (
-                  <RelativeViewPanel
-                    positionA={positionA}
-                    positionB={positionB}
-                    tleA={activeTleA}
-                    tleB={activeTleB}
-                    currentTime={currentTime}
-                  />
-                ) : (
-                  <div className="bg-gray-800/95 border border-gray-700 rounded-lg p-3 shadow-xl text-sm text-gray-300 w-full">
-                    Select two satellites to view the A→B relative panel.
+              <div className="w-full h-full max-w-[420px]">
+                <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-800">
+                    <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">
+                      A→B View
+                    </span>
+                    <button
+                      onClick={() => setRelativeCollapsed(true)}
+                      className="text-gray-500 hover:text-white p-1 transition-colors"
+                      title="Collapse panel"
+                    >
+                      <svg className="w-3 h-3 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
                   </div>
-                )}
+                  {/* Content */}
+                  {pairEnabled ? (
+                    <RelativeViewPanel
+                      positionA={positionA}
+                      positionB={positionB}
+                      tleA={activeTleA}
+                      tleB={activeTleB}
+                      currentTime={currentTime}
+                    />
+                  ) : (
+                    <div className="p-3 text-sm text-gray-300">
+                      Select two satellites to view the A→B relative panel.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
