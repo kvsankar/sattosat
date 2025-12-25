@@ -111,6 +111,23 @@ npm run lint     # ESLint with zero-warnings enforcement
 npm test         # Run vitest tests
 ```
 
+## Algorithm Verification
+
+Independent Python and TypeScript implementations verify the conjunction algorithm produces identical results:
+
+```bash
+# Run Python implementation
+cd python && uv run python conjunctions.py --profile WV3-STARLINK35956-Picture
+
+# Run TypeScript implementation
+npx tsx scripts/conjunctions.ts --profile WV3-STARLINK35956-Picture
+
+# Compare outputs
+uv run python scripts/compare-conjunctions.py --verbose
+```
+
+Both implementations find the same conjunctions within 27 meters accuracy.
+
 ## Data Sources
 
 - Satellite catalog and TLEs from [Celestrak](https://celestrak.org/)

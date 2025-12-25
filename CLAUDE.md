@@ -36,10 +36,11 @@ Pre-commit hook runs `npm run lint` automatically via simple-git-hooks.
    - Automatically switches between TLE epochs as time progresses
    - Runs asynchronously via setTimeout to avoid blocking UI
 
-4. **Profiles** (`src/lib/profiles.ts`, `src/lib/profiles.json`)
-   - Pre-configured scenarios with satellite pairs, anchor times, and embedded TLE history
+4. **Profiles** (`src/lib/profiles.ts`, `public/data/input/profiles.json`)
+   - Pre-configured scenarios with satellite pairs, anchor times, and TLE file references
+   - Profiles fetched at runtime from `/data/input/profiles.json`
+   - TLE files stored in `public/data/input/tles/*.tle`
    - Auto-loads first profile on startup
-   - Embedded TLEs in `src/lib/embedded/*.tle` are loaded at build time
 
 ### Key State in App.tsx
 
@@ -90,6 +91,51 @@ To update screenshots after UI changes:
 npm run dev &
 npx tsx scripts/capture-usage-screenshots.ts
 ```
+
+## Data Directory Structure
+
+```
+public/data/
+├── input/
+│   ├── profiles.json       # Profile definitions (references TLE files)
+│   └── tles/
+│       ├── 40115.tle       # WorldView-3 TLEs
+│       └── 66620.tle       # Starlink-35956 TLEs
+└── output/                 # CSV outputs from verification scripts
+```
+
+The web app fetches from `/data/input/` at runtime. CLI scripts read from `public/data/input/` via filesystem.
+
+## Verification Scripts
+
+Python and TypeScript implementations for verifying the conjunction algorithm:
+
+```bash
+# Python conjunction finder
+cd python && uv run python conjunctions.py --profile WV3-STARLINK35956-Picture
+
+# TypeScript conjunction finder (uses same code as web app)
+npx tsx scripts/conjunctions.ts --profile WV3-STARLINK35956-Picture
+
+# Compare outputs
+uv run python scripts/compare-conjunctions.py --verbose
+```
+
+Both scripts support `--tle-a`, `--tle-b`, and `--anchor` for custom TLE files.
+
+## Python Environment
+
+Python scripts use `uv` for package management:
+
+```bash
+cd python
+uv sync              # Install dependencies from pyproject.toml
+uv run python <script>.py
+```
+
+Key dependencies: `sgp4`, `numpy`, `requests`, `python-dotenv`
+
+For Space-Track API access, copy `python/.env.example` to `python/.env` and add credentials.
 
 ## Conventions
 
