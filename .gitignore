@@ -4,3 +4,6 @@ tsconfig.tsbuildinfo
 .DS_Store
 npm-debug.log*
 yarn-error.log*
+
+# Python environment
+python/.env

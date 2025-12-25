@@ -1,0 +1,21 @@
+[
+  {
+    "name": "WV3-STARLINK35956-Picture",
+    "description": "WorldView-3 vs Starlink close-imaging setup",
+    "anchor": "2025-12-19T01:30:19Z",
+    "satellites": [
+      {
+        "noradId": 40115,
+        "role": "A",
+        "name": "WorldView-3",
+        "tleFile": "tles/40115.tle"
+      },
+      {
+        "noradId": 66620,
+        "role": "B",
+        "name": "STARLINK-35956",
+        "tleFile": "tles/66620.tle"
+      }
+    ]
+  }
+]

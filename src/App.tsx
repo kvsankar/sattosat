@@ -13,7 +13,7 @@ import { useSatellitePosition } from './hooks/useSatellitePosition';
 import { useConjunctions } from './hooks/useConjunctions';
 import type { SatelliteCatalogEntry, SatelliteTLE } from './types/satellite';
 import { sampleDistanceCurve } from './lib/conjunctions';
-import { profiles, applyProfileTles } from './lib/profiles';
+import { fetchProfiles, applyProfileTles, type Profile } from './lib/profiles';
 import { TimelineTabs } from './components/Controls/TimelineTabs';
 
 type SortMode = 'date' | 'distance';
@@ -75,6 +75,12 @@ export default function App() {
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [relativeCollapsed, setRelativeCollapsed] = useState(false);
   const hasAutoLoadedProfile = useRef(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+
+  // Load profiles from data directory
+  useEffect(() => {
+    fetchProfiles().then(setProfiles);
+  }, []);
 
   // Load satellite catalog
   const {
@@ -386,7 +392,7 @@ export default function App() {
     setSelectedIdB(satB);
     setPreferredEpochA(null);
     setPreferredEpochB(null);
-  }, [setAnchorTime, setAutoNow, setCurrentTime, setPreferredEpochA, setPreferredEpochB, setSelectedIdA, setSelectedIdB]);
+  }, [profiles, setAnchorTime, setAutoNow, setCurrentTime, setPreferredEpochA, setPreferredEpochB, setSelectedIdA, setSelectedIdB]);
 
   // Auto-load the first profile on startup if available
   useEffect(() => {
@@ -395,8 +401,7 @@ export default function App() {
       handleSelectProfile(profiles[0]!.name);
       hasAutoLoadedProfile.current = true;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profiles.length]);
+    }, [profiles, handleSelectProfile]);
 
   // Keep time synced to real clock when in auto-now mode
   useEffect(() => {
