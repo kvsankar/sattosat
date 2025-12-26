@@ -16,7 +16,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load .env file from the same directory as this script
-load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 # Space-Track API endpoints
 SPACETRACK_AUTH_URL = "https://www.space-track.org/ajaxauth/login"

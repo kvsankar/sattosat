@@ -17,3 +17,6 @@ test-results/
 playwright-report/
 scripts/capture-blog-screenshots.ts
 scripts/test-*.ts
+.env
+.venv
+__pycache__

@@ -135,17 +135,17 @@ npm test         # Run vitest tests
 
 The repository includes Python and TypeScript scripts for conjunction analysis and verification. See **[USAGE_SCRIPTS.md](USAGE_SCRIPTS.md)** for complete documentation.
 
-Quick examples:
+Quick examples (all run from project root):
 
 ```bash
-# Find conjunctions using a profile (from python/ directory)
-cd python && uv run python conjunctions.py --profile WV3-STARLINK35956-Picture
+# Find conjunctions using a profile
+uv run python python/conjunctions.py --profile WV3-STARLINK35956-Picture
 
 # Run envelope period analysis
-cd python && uv run python envelope_analysis.py
+uv run python python/envelope_analysis.py
 
 # Verify Python vs TypeScript algorithm equivalence (within 27 meters)
-python scripts/compare-conjunctions.py --verbose
+uv run python scripts/compare-conjunctions.py --verbose
 ```
 
 Script categories:

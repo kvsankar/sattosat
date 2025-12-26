@@ -21,11 +21,10 @@ For UI documentation, see [USAGE_UI.md](USAGE_UI.md).
 
 ### Python Scripts
 
-Python scripts use [uv](https://docs.astral.sh/uv/) for dependency management. **All Python commands must be run from the `python/` directory**:
+Python scripts use [uv](https://docs.astral.sh/uv/) for dependency management. Run from project root:
 
 ```bash
-cd python
-uv sync  # Install dependencies
+uv sync  # Install dependencies (creates .venv/)
 ```
 
 ### TypeScript Scripts
@@ -38,7 +37,7 @@ npm install  # Install dependencies
 
 ### Space-Track.org Access
 
-Some scripts require a Space-Track.org account. Create `python/.env`:
+Some scripts require a Space-Track.org account. Create `.env` in project root:
 
 ```
 SPACETRACK_USER=your_username
@@ -61,23 +60,22 @@ Scripts for finding close approaches between satellite pairs.
 
 ### Usage
 
-```bash
-# From the python/ directory:
-cd python
+All commands run from project root:
 
+```bash
 # Using a profile
-uv run python conjunctions.py --profile WV3-STARLINK35956-Picture
+uv run python python/conjunctions.py --profile WV3-STARLINK35956-Picture
 
 # With report output (detailed TLE info and conjunction table)
-uv run python conjunctions.py --profile WV3-STARLINK35956-Picture --report
+uv run python python/conjunctions.py --profile WV3-STARLINK35956-Picture --report
 
-# Using custom TLE files (example with actual files)
-uv run python conjunctions.py \
-  --tle-a ../public/data/input/tles/40115.tle \
-  --tle-b ../public/data/input/tles/66620.tle \
+# Using custom TLE files
+uv run python python/conjunctions.py \
+  --tle-a public/data/input/tles/40115.tle \
+  --tle-b public/data/input/tles/66620.tle \
   --anchor 2025-12-19T01:30:19Z
 
-# TypeScript version (from project root)
+# TypeScript version
 npx tsx scripts/conjunctions.ts --profile WV3-STARLINK35956-Picture
 ```
 
@@ -107,14 +105,11 @@ The "envelope period" is the time between successive closest approaches—the rh
 ### Usage
 
 ```bash
-# From the python/ directory:
-cd python
-
 # Run envelope analysis for all configured pairs
-uv run python envelope_analysis.py
+uv run python python/envelope_analysis.py
 
 # Run theoretical analysis
-uv run python envelope_theory.py
+uv run python python/envelope_theory.py
 ```
 
 ### Satellite Pairs
@@ -158,26 +153,23 @@ These scripts were created to investigate the discrepancy between the reported 2
 ### Usage
 
 ```bash
-# From the python/ directory:
-cd python
-
 # Run deep verification
-uv run python verify_conjunction.py
+uv run python python/verify_conjunction.py
 
 # Scan for Alaska passes on Dec 18
-uv run python scan_alaska.py
+uv run python python/scan_alaska.py
 
 # Compare Dec 17 vs Dec 18 geometry
-uv run python scan_dec17.py
+uv run python python/scan_dec17.py
 
 # Back-propagate post-anomaly TLE
-uv run python backpropagate_dec19.py
+uv run python python/backpropagate_dec19.py
 
 # Fetch historical TLEs (requires .env with credentials)
-uv run python fetch_spacetrack.py
+uv run python python/fetch_spacetrack.py
 
 # Compare Space-Track vs embedded TLEs
-uv run python compare_with_spacetrack.py
+uv run python python/compare_with_spacetrack.py
 ```
 
 ### Key Findings
@@ -226,16 +218,14 @@ Both Python and TypeScript implementations use the same algorithm and produce id
 ### Running Verification
 
 ```bash
-# Run Python implementation (from python/ directory)
-cd python
-uv run python conjunctions.py --profile WV3-STARLINK35956-Picture
+# Run Python implementation
+uv run python python/conjunctions.py --profile WV3-STARLINK35956-Picture
 
-# Run TypeScript implementation (from project root)
-cd ..
+# Run TypeScript implementation
 npx tsx scripts/conjunctions.ts --profile WV3-STARLINK35956-Picture
 
-# Compare outputs (from project root)
-python scripts/compare-conjunctions.py --verbose
+# Compare outputs
+uv run python scripts/compare-conjunctions.py --verbose
 ```
 
 ### Algorithm Overview
