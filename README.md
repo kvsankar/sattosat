@@ -107,7 +107,12 @@ The app will be available at `http://localhost:5173`.
 npm run build
 ```
 
-## Usage
+## Documentation
+
+- **[UI Guide](USAGE_UI.md)** - Detailed instructions for the web interface
+- **[Scripts Guide](USAGE_SCRIPTS.md)** - Command-line analysis tools documentation
+
+## Quick Start
 
 1. **Select Satellites**: Use the dropdown menus or search to select Satellite A and Satellite B
 2. **Set Anchor Time**: The anchor time centers the ±3 day conjunction search window
@@ -126,104 +131,28 @@ npm test         # Run vitest tests
 
 ## Analysis Scripts
 
-The repository includes Python and TypeScript scripts for conjunction analysis and verification. These were developed to investigate the Starlink-35956 imaging event and to study satellite conjunction patterns.
+<a id="analysis-scripts"></a>
 
-### Conjunction Analysis
+The repository includes Python and TypeScript scripts for conjunction analysis and verification. See **[USAGE_SCRIPTS.md](USAGE_SCRIPTS.md)** for complete documentation.
 
-<a id="conjunction-scripts"></a>
-
-| Script | Language | Description |
-|--------|----------|-------------|
-| `python/conjunctions.py` | Python | Find close approaches between satellite pairs. Supports profile-based or custom TLE input. Outputs CSV with times, distances, and geographic coordinates. |
-| `scripts/conjunctions.ts` | TypeScript | Same algorithm as the web app, for cross-validation against Python. |
-| `scripts/compare-conjunctions.py` | Python | Compares Python vs TypeScript outputs to verify algorithmic equivalence (within 27 meters). |
+Quick examples:
 
 ```bash
-# Using a profile
+# Find conjunctions using a profile
 uv run python python/conjunctions.py --profile WV3-STARLINK35956-Picture
 
-# With report output
-uv run python python/conjunctions.py --profile WV3-STARLINK35956-Picture --report
-
-# Compare Python vs TypeScript outputs
-uv run python scripts/compare-conjunctions.py --verbose
-```
-
-### Envelope Period Analysis
-
-<a id="envelope-scripts"></a>
-
-The "envelope period" is the time between successive closest approaches—the rhythm of imaging opportunities.
-
-| Script | Description |
-|--------|-------------|
-| `python/envelope_analysis.py` | Analyzes distance envelope patterns for satellite pairs. Outputs JSON with orbital elements, approach times, and envelope periods. |
-| `python/envelope_theory.py` | Theoretical calculations of envelope period based on orbital mechanics (synodic period formula, J2 precession effects). |
-| `python/satellite_pairs.json` | Pre-defined satellite pairs for envelope analysis with observed vs theoretical periods. |
-
-```bash
-# Run envelope analysis
+# Run envelope period analysis
 uv run python python/envelope_analysis.py
-```
 
-### Investigation Scripts
-
-<a id="investigation-scripts"></a>
-
-These scripts were created to investigate the discrepancy between the reported 241 km imaging distance and the calculated 350 km.
-
-| Script | Purpose |
-|--------|---------|
-| `python/verify_conjunction.py` | Deep verification of WV3/Starlink-35956 conjunction calculations. Includes embedded TLEs and detailed output. |
-| `python/scan_alaska.py` | Scans Dec 18, 2025 for any WV3/Starlink passes over Alaska region. |
-| `python/scan_dec17.py` | Compares Dec 17 vs Dec 18 approach geometry to understand orbital patterns. |
-| `python/backpropagate_dec19.py` | Tests back-propagating Dec 19 (post-anomaly) TLE to Dec 18 imaging time. |
-| `python/fetch_spacetrack.py` | Fetches historical TLEs from Space-Track.org GP_History API. Requires account credentials in `.env`. |
-| `python/compare_with_spacetrack.py` | Compares conjunction results using Space-Track TLEs vs embedded TLEs. |
-
-```bash
-# Run verification
-uv run python python/verify_conjunction.py
-
-# Scan for Alaska passes
-uv run python python/scan_alaska.py
-
-# Fetch historical TLEs (requires .env with credentials)
-uv run python python/fetch_spacetrack.py
-```
-
-### Screenshot Capture
-
-<a id="screenshot-scripts"></a>
-
-Playwright scripts for capturing documentation screenshots.
-
-| Script | Description |
-|--------|-------------|
-| `scripts/capture-usage-screenshots.ts` | Captures UI screenshots for README/USAGE documentation. |
-| `scripts/capture-blog-screenshots.ts` | Captures screenshots for blog post illustrations. |
-
-```bash
-npm run dev &
-npx tsx scripts/capture-usage-screenshots.ts
-```
-
-### Algorithm Verification
-
-<a id="algorithm-verification"></a>
-
-Both Python and TypeScript implementations produce identical results:
-
-```bash
-# Run Python implementation
-uv run python python/conjunctions.py --profile WV3-STARLINK35956-Picture
-
-# Run TypeScript implementation
-npx tsx scripts/conjunctions.ts --profile WV3-STARLINK35956-Picture
-
-# Compare outputs (within 27 meters accuracy)
+# Verify Python vs TypeScript algorithm equivalence (within 27 meters)
 uv run python scripts/compare-conjunctions.py --verbose
 ```
+
+Script categories:
+- **[Conjunction Analysis](USAGE_SCRIPTS.md#conjunction-scripts)** - Find close approaches between satellites
+- **[Envelope Period Analysis](USAGE_SCRIPTS.md#envelope-scripts)** - Study the rhythm of imaging opportunities
+- **[Investigation Scripts](USAGE_SCRIPTS.md#investigation-scripts)** - Starlink-35956 discrepancy analysis
+- **[Algorithm Verification](USAGE_SCRIPTS.md#algorithm-verification)** - Cross-validate Python and TypeScript implementations
 
 ## Data Sources
 

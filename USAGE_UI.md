@@ -1,6 +1,8 @@
-# SatToSat Usage Guide
+# SatToSat UI Guide
 
-This guide provides detailed instructions for using all features of SatToSat, a satellite orbit visualization and conjunction analysis tool.
+This guide provides detailed instructions for using the SatToSat web interface for satellite orbit visualization and conjunction analysis.
+
+For command-line analysis scripts, see [USAGE_SCRIPTS.md](USAGE_SCRIPTS.md).
 
 ![Full Application](screenshots/full-app.png)
 
