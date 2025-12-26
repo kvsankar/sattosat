@@ -85,23 +85,6 @@ before_delta_T = abs(before_period - starlink_period)
 after_delta_T = abs(after_period - starlink_period)
 print(f"\n{'|T_wv3 - T_starlink| (min)':<35} {before_delta_T:>15.4f} {after_delta_T:>15.4f} {after_delta_T - before_delta_T:>+15.4f}")
 
-print("\n" + "=" * 70)
-print("INTERPRETATION")
-print("=" * 70)
-print(f"""
-The maneuver:
-- RAISED the orbit by {after_alt - before_alt:.1f} km (from {before_alt:.1f} to {after_alt:.1f} km)
-- INCREASED the period by {(after_period - before_period)*60:.2f} seconds
-- REDUCED eccentricity from {before_ecc:.5f} to {after_ecc:.5f} (circularization)
-
-Effect on beat period with Starlink:
-- Before: {before_synodic:.1f} hours ({before_synodic/24:.2f} days)
-- After:  {after_synodic:.1f} hours ({after_synodic/24:.2f} days)
-- Change: {change_synodic:+.1f} hours ({pct_change:+.1f}%)
-
-The orbit raise INCREASED the period difference from Starlink, which
-DECREASED the synodic (beat) period. Starlink now "laps" WV3 faster.
-""")
 
 # Let's also check with the anomalous STARLINK-35956
 print("\n" + "=" * 70)
@@ -123,8 +106,3 @@ print("-" * 80)
 print(f"{'Synodic Period (hours)':<35} {before_synodic_35956:>15.2f} {after_synodic_35956:>15.2f} {change_35956:>+15.2f}")
 print(f"{'Synodic Period (days)':<35} {before_synodic_35956/24:>15.3f} {after_synodic_35956/24:>15.3f} {change_35956/24:>+15.3f}")
 
-print(f"""
-The anomalous STARLINK-35956 at ~447 km has a SHORTER period than WV3.
-The WV3 maneuver moved WV3's period FURTHER from STARLINK-35956's period,
-which DECREASED the beat period even more than for the healthy Starlink.
-""")

@@ -481,28 +481,18 @@ def main():
     print("SUMMARY")
     print("=" * 70)
     print()
-    print("Reported imaging:")
-    print("  - Distance: 241 km")
-    print("  - Date: December 18, 2025")
-    print("  - Location: Over Alaska")
+    print("Reported: 241 km over Alaska on Dec 18, 2025")
     print()
 
     if approaches:
         closest = approaches[0]
-        print(f"Closest approach found (using available TLEs):")
-        print(f"  - Distance: {closest['distance']:.1f} km")
-        print(f"  - Time: {closest['time'].strftime('%Y-%m-%d %H:%M:%S')} UTC")
-        print(f"  - WorldView-3: {format_position(closest['wv3_position'])}")
-        print(f"  - Starlink: {format_position(closest['starlink_position'])}")
+        print(f"Calculated closest approach:")
+        print(f"  Distance: {closest['distance']:.1f} km")
+        print(f"  Time: {closest['time'].strftime('%Y-%m-%d %H:%M:%S')} UTC")
+        print(f"  WorldView-3: {format_position(closest['wv3_position'])}")
+        print(f"  Starlink: {format_position(closest['starlink_position'])}")
         print()
         print(f"Discrepancy: {closest['distance'] - 241:.1f} km")
-
-    print()
-    print("Possible explanations for discrepancy:")
-    print("  1. TLEs don't capture rapid orbital changes during anomaly")
-    print("  2. Satellite tumbling caused position uncertainty")
-    print("  3. Post-anomaly TLE epoch (Dec 19) may not accurately backpropagate to Dec 18")
-    print("  4. The 241 km was measured at a specific imaging time, not closest approach")
 
 
 if __name__ == "__main__":

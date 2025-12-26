@@ -95,24 +95,6 @@ def main():
     else:
         print("  None found!")
 
-    # Key insight
-    print(f"\n{'='*70}")
-    print("ANALYSIS")
-    print(f"{'='*70}")
-    print("""
-The anomaly occurred on Dec 17. Our TLEs show:
-- Dec 17: 204 km closest approach (Atlantic Ocean)
-- Dec 18: NO close approaches < 1000 km
-
-The news reports Dec 18 imaging at 241 km over Alaska.
-
-This suggests the post-anomaly orbit change created a NEW geometry
-that allowed imaging on Dec 18 - but our TLEs (from Dec 17-18)
-don't capture this changed orbit state.
-
-The Dec 19 TLE (n=15.452, showing decay) might be more accurate
-for Dec 18, but back-propagation is unreliable for tumbling satellites.
-""")
 
 
 if __name__ == "__main__":

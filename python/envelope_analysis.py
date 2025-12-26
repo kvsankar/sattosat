@@ -492,17 +492,13 @@ def main():
         print(f"{desc:<45} {result.delta_altitude:>8.0f} {result.delta_inclination:>7.1f} "
               f"{result.delta_raan:>8.1f} {result.mean_approach_period:>10.2f} {env_period:>10} {result.min_distance:>10.1f}")
 
-    print("\n" + "=" * 120)
-    print("OBSERVATIONS")
-    print("=" * 120)
-
-    # Sort by envelope period to find patterns
+    # Sort by envelope period
     sorted_results = sorted(results, key=lambda x: x[1].mean_envelope_period if x[1].envelope_periods else 999)
 
-    print("\nOrdered by envelope period (shortest to longest):")
+    print("\nSorted by envelope period (shortest to longest):")
     for desc, result in sorted_results:
         if result.envelope_periods:
-            print(f"  {result.mean_envelope_period:>6.2f} hrs ({result.mean_envelope_period*60:.0f} min) - {desc}")
+            print(f"  {result.mean_envelope_period:>6.2f} hrs - {desc}")
         else:
             print(f"     N/A - {desc}")
 

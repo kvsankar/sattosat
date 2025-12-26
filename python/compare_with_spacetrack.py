@@ -92,22 +92,9 @@ def main():
         print(f"  {a['distance']:.1f} km at {a['time'].strftime('%Y-%m-%d %H:%M:%S')} UTC")
 
     # Summary
-    print("\n" + "=" * 70)
-    print("CONCLUSION")
-    print("=" * 70)
-
     if approaches_embedded and approaches_spacetrack:
         diff = abs(approaches_embedded[0]['distance'] - approaches_spacetrack[0]['distance'])
-        if diff < 1:
-            print("\nResults match - Space-Track TLEs are identical to embedded TLEs.")
-            print("No additional TLE data available for the Dec 17-18 anomaly period.")
-        else:
-            print(f"\nResults differ by {diff:.1f} km")
-
-    print("\nThe ~50 hour TLE gap (Dec 18 20:26 → Dec 19 22:47) means:")
-    print("  - No TLEs captured the post-anomaly orbit on Dec 18")
-    print("  - The 241 km imaging distance cannot be verified with public TLE data")
-    print("  - SpaceX/Vantor likely used internal ephemeris data")
+        print(f"\nDifference in closest approach: {diff:.1f} km")
 
 
 if __name__ == "__main__":

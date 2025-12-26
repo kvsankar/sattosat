@@ -125,33 +125,6 @@ def main():
         print(f"{p['name']:<30} {delta_inc:>7.1f} {delta_alt:>7.0f} {raan_a:>10.3f} {raan_b:>10.3f} "
               f"{diff_raan_period:>11.1f} {synodic:>9.1f} {p['observed']:>9.1f}")
 
-    print()
-    print("=" * 100)
-    print("INSIGHTS")
-    print("=" * 100)
-    print("""
-1. RAAN PRECESSION DOMINATES FOR DIFFERENT INCLINATIONS:
-   - Sun-sync (~98 deg) satellites have POSITIVE RAAN drift (~+1 deg/day to track the Sun)
-   - LEO prograde (~52 deg) satellites have NEGATIVE RAAN drift (~-5 deg/day)
-   - ISS vs NOAA-20: Their orbital planes rotate relative to each other at ~6 deg/day
-   - This explains the short 18.3 hr envelope period
-
-2. SIMILAR INCLINATIONS = LONG ENVELOPE PERIODS:
-   - ISS vs Starlink: Both ~52 deg, similar RAAN rates, planes stay nearly parallel
-   - Takes ~5 days (119 hrs) for the slight differences to create the next deep approach
-
-3. SYNODIC PERIOD MATTERS FOR DIFFERENT ALTITUDES:
-   - GPS vs ISS: Huge altitude difference = GPS orbit much slower
-   - Synodic period is short (12 hrs) - ISS "laps" GPS frequently
-   - Each lap is a potential close approach, hence short envelope period
-
-4. THE ENVELOPE PERIOD IS ROUGHLY:
-   - MIN(Differential RAAN period, Synodic period) / 2
-   - Divided by 2 because there are 2 orbital plane crossing points
-
-5. SAME PLANE = NO CLOSE APPROACHES:
-   - Starlink same launch: Same plane, same speed = never close
-""")
 
 
 if __name__ == "__main__":
