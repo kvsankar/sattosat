@@ -7,3 +7,13 @@ yarn-error.log*
 
 # Python environment
 python/.env
+python/__pycache__/
+
+# Generated output
+public/data/output/
+
+# Playwright
+test-results/
+playwright-report/
+scripts/capture-blog-screenshots.ts
+scripts/test-*.ts

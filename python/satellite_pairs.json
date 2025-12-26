@@ -1,0 +1,107 @@
+{
+  "description": "Satellite pairs for envelope analysis. Each pair defines two satellites and their expected orbital characteristics.",
+  "pairs": [
+    {
+      "id": "starlink_same_launch",
+      "norad_a": 60330,
+      "norad_b": 60331,
+      "description": "Starlink same launch (~53deg, ~540km)",
+      "notes": "Same orbital plane - satellites never get close",
+      "approx_altitude_a_km": 540,
+      "approx_inclination_a_deg": 53.2,
+      "approx_altitude_b_km": 540,
+      "approx_inclination_b_deg": 53.2
+    },
+    {
+      "id": "starlink_diff_shells",
+      "norad_a": 60330,
+      "norad_b": 57634,
+      "description": "Starlink different shells (~540km vs ~340km)",
+      "observed_envelope_hours": 89.0,
+      "approx_altitude_a_km": 475,
+      "approx_inclination_a_deg": 53.2,
+      "approx_altitude_b_km": 559,
+      "approx_inclination_b_deg": 43.0
+    },
+    {
+      "id": "iss_starlink",
+      "norad_a": 25544,
+      "norad_b": 60330,
+      "description": "ISS vs Starlink (~51.6deg vs ~53deg, ~420km vs ~540km)",
+      "observed_envelope_hours": 119.9,
+      "approx_altitude_a_km": 417,
+      "approx_inclination_a_deg": 51.6,
+      "approx_altitude_b_km": 475,
+      "approx_inclination_b_deg": 53.2
+    },
+    {
+      "id": "iss_noaa20",
+      "norad_a": 25544,
+      "norad_b": 43013,
+      "description": "ISS vs NOAA-20 (~51.6deg vs ~98.8deg)",
+      "observed_envelope_hours": 18.3,
+      "approx_altitude_a_km": 417,
+      "approx_inclination_a_deg": 51.6,
+      "approx_altitude_b_km": 827,
+      "approx_inclination_b_deg": 98.8
+    },
+    {
+      "id": "noaa20_landsat9",
+      "norad_a": 43013,
+      "norad_b": 49260,
+      "description": "NOAA-20 vs Landsat-9 (both sun-sync ~98deg)",
+      "observed_envelope_hours": 64.1,
+      "approx_altitude_a_km": 827,
+      "approx_inclination_a_deg": 98.8,
+      "approx_altitude_b_km": 703,
+      "approx_inclination_b_deg": 98.2
+    },
+    {
+      "id": "wv3_starlink_healthy",
+      "norad_a": 40115,
+      "norad_b": 60330,
+      "description": "WorldView-3 vs Starlink-32153 (~97.4deg vs ~53deg)",
+      "notes": "Healthy Starlink at ~475km for general studies",
+      "observed_envelope_hours": 51.5,
+      "approx_altitude_a_km": 615,
+      "approx_inclination_a_deg": 97.9,
+      "approx_altitude_b_km": 475,
+      "approx_inclination_b_deg": 53.2
+    },
+    {
+      "id": "wv3_starlink35956",
+      "norad_a": 40115,
+      "norad_b": 66620,
+      "description": "WorldView-3 vs STARLINK-35956 (blog post subject)",
+      "notes": "Anomalous/decaying satellite from Dec 18 imaging event",
+      "observed_envelope_hours": 42.4,
+      "approx_altitude_a_km": 615,
+      "approx_inclination_a_deg": 97.9,
+      "approx_altitude_b_km": 447,
+      "approx_inclination_b_deg": 53.2
+    },
+    {
+      "id": "hubble_iss",
+      "norad_a": 20580,
+      "norad_b": 25544,
+      "description": "Hubble vs ISS (~28.5deg vs ~51.6deg, ~540km vs ~420km)",
+      "observed_envelope_hours": 119.1,
+      "approx_altitude_a_km": 481,
+      "approx_inclination_a_deg": 28.5,
+      "approx_altitude_b_km": 417,
+      "approx_inclination_b_deg": 51.6
+    },
+    {
+      "id": "gps_iss",
+      "norad_a": 28874,
+      "norad_b": 25544,
+      "description": "GPS IIR-14 vs ISS (MEO ~20200km vs LEO ~420km)",
+      "notes": "MEO vs LEO - synodic formula doesn't apply directly",
+      "observed_envelope_hours": 13.0,
+      "approx_altitude_a_km": 20181,
+      "approx_inclination_a_deg": 55.0,
+      "approx_altitude_b_km": 417,
+      "approx_inclination_b_deg": 51.6
+    }
+  ]
+}
