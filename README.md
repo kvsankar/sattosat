@@ -138,14 +138,14 @@ The repository includes Python and TypeScript scripts for conjunction analysis a
 Quick examples:
 
 ```bash
-# Find conjunctions using a profile
-uv run python python/conjunctions.py --profile WV3-STARLINK35956-Picture
+# Find conjunctions using a profile (from python/ directory)
+cd python && uv run python conjunctions.py --profile WV3-STARLINK35956-Picture
 
 # Run envelope period analysis
-uv run python python/envelope_analysis.py
+cd python && uv run python envelope_analysis.py
 
 # Verify Python vs TypeScript algorithm equivalence (within 27 meters)
-uv run python scripts/compare-conjunctions.py --verbose
+python scripts/compare-conjunctions.py --verbose
 ```
 
 Script categories:
