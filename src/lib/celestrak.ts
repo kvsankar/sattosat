@@ -130,11 +130,17 @@ export async function fetchSatelliteCatalog(forceRefresh = false): Promise<Satel
   const allSatellites: SatelliteCatalogEntry[] = [];
   const seenIds = new Set<number>();
 
-  // Fetch all groups in parallel
+  // Fetch all groups in parallel with timeout
+  const CATALOG_TIMEOUT_MS = 15000; // 15 second timeout per group
+
   const fetchPromises = SATELLITE_GROUPS.map(async (group) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), CATALOG_TIMEOUT_MS);
+
     try {
       const url = `${CELESTRAK_BASE}?GROUP=${group}&FORMAT=json`;
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         console.warn(`Failed to fetch ${group} catalog: ${response.status}`);
@@ -148,7 +154,12 @@ export async function fetchSatelliteCatalog(forceRefresh = false): Promise<Satel
         objectId: gp.OBJECT_ID,
       }));
     } catch (err) {
-      console.warn(`Error fetching ${group} catalog:`, err);
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.warn(`Timeout fetching ${group} catalog after ${CATALOG_TIMEOUT_MS}ms`);
+      } else {
+        console.warn(`Error fetching ${group} catalog:`, err);
+      }
       return [];
     }
   });
@@ -189,13 +200,29 @@ export async function fetchTLE(noradId: number, forceRefresh = false): Promise<S
     }
   }
 
+  const TLE_TIMEOUT_MS = 10000; // 10 second timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TLE_TIMEOUT_MS);
+
   const jsonUrl = `${CELESTRAK_BASE}?CATNR=${noradId}&FORMAT=json`;
   const tleUrl = `${CELESTRAK_BASE}?CATNR=${noradId}&FORMAT=tle`;
 
-  const [jsonResponse, tleResponse] = await Promise.all([
-    fetch(jsonUrl),
-    fetch(tleUrl),
-  ]);
+  let jsonResponse: Response;
+  let tleResponse: Response;
+
+  try {
+    [jsonResponse, tleResponse] = await Promise.all([
+      fetch(jsonUrl, { signal: controller.signal }),
+      fetch(tleUrl, { signal: controller.signal }),
+    ]);
+    clearTimeout(timeoutId);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(`Timeout fetching TLE for NORAD ${noradId} after ${TLE_TIMEOUT_MS}ms`);
+    }
+    throw err;
+  }
 
   if (!jsonResponse.ok) {
     throw new Error(`Failed to fetch GP data for NORAD ${noradId}: ${jsonResponse.status}`);

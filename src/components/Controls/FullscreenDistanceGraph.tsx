@@ -286,7 +286,7 @@ export function FullscreenDistanceGraph({
       .style('font-size', '12px')
       .style('font-family', 'monospace')
       .style('pointer-events', 'none')
-      .style('z-index', '60');
+      .style('z-index', '10000');
 
     // Bisector for finding closest point
     const bisect = d3.bisector<DistanceSample, Date>(d => d.time).left;
@@ -447,7 +447,7 @@ export function FullscreenDistanceGraph({
       role="dialog"
       aria-modal="true"
       aria-label="Distance Graph - Fullscreen View"
-      className="fixed inset-0 z-50 bg-gray-900 flex flex-col"
+      className="fixed inset-0 z-[9999] bg-gray-900 flex flex-col"
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 bg-gray-800">

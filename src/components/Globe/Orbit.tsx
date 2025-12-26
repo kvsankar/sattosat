@@ -7,9 +7,10 @@ interface OrbitProps {
   path: ECIPosition[];
   color: string;
   opacity?: number;
+  dashed?: boolean;
 }
 
-export function Orbit({ path, color, opacity = 0.6 }: OrbitProps) {
+export function Orbit({ path, color, opacity = 0.6, dashed = false }: OrbitProps) {
   const [line, setLine] = useState<THREE.Line | null>(null);
 
   useEffect(() => {
@@ -26,14 +27,29 @@ export function Orbit({ path, color, opacity = 0.6 }: OrbitProps) {
 
     // Create geometry and material
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({
-      color: color,
-      opacity: opacity,
-      transparent: true,
-    });
+
+    let material: THREE.LineBasicMaterial | THREE.LineDashedMaterial;
+    if (dashed) {
+      material = new THREE.LineDashedMaterial({
+        color: color,
+        opacity: opacity,
+        transparent: true,
+        dashSize: 0.03,
+        gapSize: 0.02,
+      });
+    } else {
+      material = new THREE.LineBasicMaterial({
+        color: color,
+        opacity: opacity,
+        transparent: true,
+      });
+    }
 
     // Create line
     const newLine = new THREE.Line(geometry, material);
+    if (dashed) {
+      newLine.computeLineDistances(); // Required for dashed lines
+    }
     setLine(newLine);
 
     // Cleanup
@@ -41,7 +57,7 @@ export function Orbit({ path, color, opacity = 0.6 }: OrbitProps) {
       geometry.dispose();
       material.dispose();
     };
-  }, [path, color, opacity]);
+  }, [path, color, opacity, dashed]);
 
   if (!line) return null;
 

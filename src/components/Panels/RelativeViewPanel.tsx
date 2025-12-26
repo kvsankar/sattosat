@@ -55,14 +55,16 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
     const rangeKm = Number.isFinite(rangeKmRaw) ? rangeKmRaw : EARTH_RADIUS_KM;
     const sunEci = calculateSunPosition(currentTime);
     const phaseAngleDeg = computePhaseAngle(positionA.eci, positionB.eci, sunEci);
+    const occluded = isOccludedByEarth(positionA.eci, positionB.eci);
 
     return {
       rangeKm,
       phaseAngleDeg,
+      occluded,
     };
   }, [currentTime, positionA, positionB]);
 
-  const autoFov = derived ? pickFov(derived.rangeKm, true, fov) : fov;
+  const autoFov = derived ? pickFov(derived.rangeKm, true, fov, derived.occluded) : fov;
   const displayFov = autoFit && derived ? autoFov : fov;
 
   const fovRad = (displayFov * Math.PI) / 180;
@@ -141,10 +143,16 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
               showVelocity={showVelocity}
               showNadir={showNadir}
               orbitPathB={orbitPathB}
+              isOccluded={derived.occluded}
             />
             <div className="absolute top-1.5 left-2 text-[10px] text-gray-300 bg-black/70 px-1.5 py-0.5 rounded pointer-events-none font-mono">
               N ↑
             </div>
+            {derived?.occluded && (
+              <div className="absolute top-1.5 right-2 text-[10px] text-orange-400 bg-black/70 px-1.5 py-0.5 rounded pointer-events-none font-mono">
+                Occluded
+              </div>
+            )}
             <div className="absolute bottom-1.5 right-2 text-[10px] text-gray-300 bg-black/70 px-1.5 py-0.5 rounded pointer-events-none font-mono">
               {formatFov(displayFov)} · {formatSpan(displaySpanM)}
             </div>
@@ -191,9 +199,49 @@ export function RelativeViewPanel({ positionA, positionB, tleA, tleB, currentTim
   );
 }
 
-function pickFov(rangeKm: number, autoFit: boolean, manualFov: number): number {
+// Check if satellite B is occluded by Earth from satellite A's perspective
+function isOccludedByEarth(posA: ECIPosition, posB: ECIPosition): boolean {
+  // Ray from A to B
+  const dir = subtract(posB, posA);
+  const rangeKm = magnitude(dir);
+  if (rangeKm <= 0) return false;
+
+  const normDir = normalize(dir);
+
+  // Ray-sphere intersection: origin at A, direction toward B, sphere at origin with radius EARTH_RADIUS_KM
+  // Origin in this frame is Earth center, so we use posA as the ray origin
+  const ox = posA.x, oy = posA.y, oz = posA.z;
+  const dx = normDir.x, dy = normDir.y, dz = normDir.z;
+
+  const a = dx * dx + dy * dy + dz * dz; // = 1 since normalized
+  const b = 2 * (ox * dx + oy * dy + oz * dz);
+  const c = ox * ox + oy * oy + oz * oz - EARTH_RADIUS_KM * EARTH_RADIUS_KM;
+
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) return false; // No intersection with Earth
+
+  const sqrtDisc = Math.sqrt(discriminant);
+  const t1 = (-b - sqrtDisc) / (2 * a);
+  const t2 = (-b + sqrtDisc) / (2 * a);
+
+  // Check if Earth intersection is between A and B
+  const tMin = Math.min(t1, t2);
+
+  // Occluded if ray enters Earth before reaching B
+  // tMin > 0 means intersection is in front of A
+  // tMin < rangeKm means intersection is before reaching B
+  return tMin > 0 && tMin < rangeKm;
+}
+
+function pickFov(rangeKm: number, autoFit: boolean, manualFov: number, isOccluded: boolean): number {
   if (!autoFit) return manualFov;
   if (rangeKm <= 0) return manualFov;
+
+  // If occluded by Earth, use wide FoV to show Earth context
+  if (isOccluded) {
+    return 90; // Wide enough to see Earth and understand the occlusion
+  }
+
   const rangeM = rangeKm * 1000;
   const sizeWidthM = TARGET_TOTAL_WIDTH_M;
   const sizeHeightM = TARGET_HEIGHT_M;
@@ -215,6 +263,7 @@ interface RelativeViewCanvasProps {
   showVelocity: boolean;
   showNadir: boolean;
   orbitPathB: ECIPosition[];
+  isOccluded: boolean;
 }
 
 // Convert ECI to Three.js with scaling (camera-relative coordinate system)
@@ -232,6 +281,7 @@ function RelativeViewCanvas({
   showVelocity,
   showNadir,
   orbitPathB,
+  isOccluded,
 }: RelativeViewCanvasProps) {
   // Compute relative position and scaling
   const rel = useMemo(() => subtract(positionB.eci, positionA.eci), [positionA.eci, positionB.eci]);
@@ -396,6 +446,7 @@ function RelativeViewCanvas({
           scale={scale}
           earthVisible={earthVisible}
           useFullEarth={useFullEarth}
+          isOccluded={isOccluded}
         />
       </Suspense>
     </Canvas>
@@ -421,6 +472,7 @@ interface RelativeSceneProps {
   scale: number;
   earthVisible: boolean;
   useFullEarth: boolean;
+  isOccluded: boolean;
 }
 
 function RelativeScene({
@@ -442,6 +494,7 @@ function RelativeScene({
   scale,
   earthVisible,
   useFullEarth,
+  isOccluded,
 }: RelativeSceneProps) {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
 
@@ -507,32 +560,34 @@ function RelativeScene({
         />
       )}
 
-      {/* Satellite B body - solar panels */}
-      <group position={relThree} quaternion={panelRotation}>
-        {TARGET_SEGMENTS_M.map((segment, idx) => {
-          const leftOffsetM =
-            -TARGET_TOTAL_WIDTH_M / 2 +
-            TARGET_SEGMENTS_M.slice(0, idx).reduce((a, b) => a + b, 0) +
-            (idx > 0 ? idx * TARGET_GAP_M : 0) +
-            segment / 2;
-          const offsetX = (leftOffsetM / 1000) * scale;
-          return (
-            <mesh key={idx} position={[offsetX, 0, 0]} renderOrder={20}>
-              <planeGeometry args={[(segment / 1000) * scale, panelSize.height]} />
-              <meshStandardMaterial
-                color="#ef4444"
-                emissive="#ff7f7f"
-                emissiveIntensity={0.3}
-                side={THREE.DoubleSide}
-                depthTest={false}
-              />
-            </mesh>
-          );
-        })}
-      </group>
+      {/* Satellite B body - solar panels (hidden when occluded) */}
+      {!isOccluded && (
+        <group position={relThree} quaternion={panelRotation}>
+          {TARGET_SEGMENTS_M.map((segment, idx) => {
+            const leftOffsetM =
+              -TARGET_TOTAL_WIDTH_M / 2 +
+              TARGET_SEGMENTS_M.slice(0, idx).reduce((a, b) => a + b, 0) +
+              (idx > 0 ? idx * TARGET_GAP_M : 0) +
+              segment / 2;
+            const offsetX = (leftOffsetM / 1000) * scale;
+            return (
+              <mesh key={idx} position={[offsetX, 0, 0]} renderOrder={20}>
+                <planeGeometry args={[(segment / 1000) * scale, panelSize.height]} />
+                <meshStandardMaterial
+                  color="#ef4444"
+                  emissive="#ff7f7f"
+                  emissiveIntensity={0.3}
+                  side={THREE.DoubleSide}
+                  depthTest={false}
+                />
+              </mesh>
+            );
+          })}
+        </group>
+      )}
 
-      {/* Nadir line from satellite to Earth center */}
-      {showNadir && (
+      {/* Nadir line from satellite to Earth center (hidden when occluded) */}
+      {showNadir && !isOccluded && (
         <Line
           points={[relThree, earthThree]}
           color="#6b7280"
@@ -543,8 +598,8 @@ function RelativeScene({
         />
       )}
 
-      {/* Sun direction from B */}
-      {showSunLine && (
+      {/* Sun direction from B (hidden when occluded) */}
+      {showSunLine && !isOccluded && (
         <Line
           points={[
             relThree,
@@ -563,8 +618,8 @@ function RelativeScene({
         />
       )}
 
-      {/* Velocity direction (absolute - tangent to orbit track) */}
-      {showVelocity && velocityDir && (() => {
+      {/* Velocity direction (absolute - tangent to orbit track, hidden when occluded) */}
+      {showVelocity && velocityDir && !isOccluded && (() => {
         // Fixed visual length: half the view height at satellite distance
         const distToB = Math.sqrt(relThree[0] ** 2 + relThree[1] ** 2 + relThree[2] ** 2);
         const fovRad = (fov * Math.PI) / 180;

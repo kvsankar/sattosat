@@ -72,6 +72,7 @@ export default function App() {
   const [showAntiSolar, setShowAntiSolar] = useState(true);
   const [showMainLos, setShowMainLos] = useState(true);
   const [showMainSunLine, setShowMainSunLine] = useState(true);
+  const [showOccluded, setShowOccluded] = useState(false);
   const [timelineCollapsed, setTimelineCollapsed] = useState(false);
   const [relativeCollapsed, setRelativeCollapsed] = useState(false);
   const hasAutoLoadedProfile = useRef(false);
@@ -621,6 +622,7 @@ export default function App() {
               showAntiSolar={showAntiSolar}
               showMainLos={pairEnabled && showMainLos}
               showMainSunLine={pairEnabled && showMainSunLine}
+              showOccluded={showOccluded}
             />
             <div className="absolute left-3 right-3 bottom-3 flex flex-wrap gap-4 items-center text-[11px] text-gray-300 bg-black/70 backdrop-blur-sm rounded px-3 py-1.5">
               <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
@@ -654,6 +656,10 @@ export default function App() {
                   className="accent-blue-500"
                 />
                 Sun line at B
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer hover:text-white transition-colors">
+                <input type="checkbox" checked={showOccluded} onChange={e => setShowOccluded(e.target.checked)} className="accent-blue-500" />
+                Show occluded
               </label>
             </div>
           </div>

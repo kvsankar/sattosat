@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, PerspectiveCamera, Line } from '@react-three/drei';
 import { Earth } from './Earth';
 import { Orbit } from './Orbit';
@@ -8,6 +8,88 @@ import type { SatellitePosition, ECIPosition } from '../../types/satellite';
 import { calculateSunPosition } from '../../lib/sun';
 import { eciToThreeJs } from '../../lib/orbit';
 import * as THREE from 'three';
+import { useState } from 'react';
+
+// Check if a point is occluded by Earth from camera's perspective
+function isOccludedByEarth(
+  cameraPos: THREE.Vector3,
+  satellitePos: [number, number, number],
+  earthRadius: number = 1
+): boolean {
+  const camToSat = new THREE.Vector3(
+    satellitePos[0] - cameraPos.x,
+    satellitePos[1] - cameraPos.y,
+    satellitePos[2] - cameraPos.z
+  );
+  const distToSat = camToSat.length();
+  const dir = camToSat.normalize();
+
+  // Ray-sphere intersection from camera toward satellite
+  const origin = cameraPos;
+  const a = 1; // dir is normalized
+  const b = 2 * origin.dot(dir);
+  const c = origin.dot(origin) - earthRadius * earthRadius;
+  const discriminant = b * b - 4 * a * c;
+
+  if (discriminant < 0) return false; // No intersection with Earth
+
+  const sqrtDisc = Math.sqrt(discriminant);
+  const t1 = (-b - sqrtDisc) / 2;
+  const t2 = (-b + sqrtDisc) / 2;
+
+  // Check if Earth intersection is between camera and satellite
+  const tMin = Math.min(t1, t2);
+
+  // Satellite is occluded if Earth intersection happens before reaching satellite
+  return tMin > 0 && tMin < distToSat;
+}
+
+// Wrapper component that detects occlusion using camera position
+function SatelliteGroup({
+  satellite,
+  color,
+  showOccluded,
+}: {
+  satellite: { name: string; position: SatellitePosition | null; orbitPath: ECIPosition[] };
+  color: string;
+  showOccluded: boolean;
+}) {
+  const { camera } = useThree();
+  const [isOccluded, setIsOccluded] = useState(false);
+
+  useFrame(() => {
+    if (satellite.position) {
+      const satPos = eciToThreeJs(satellite.position.eci);
+      const occluded = isOccludedByEarth(camera.position, satPos);
+      if (occluded !== isOccluded) {
+        setIsOccluded(occluded);
+      }
+    }
+  });
+
+  // Determine if satellite marker should be shown
+  const showSatellite = !isOccluded || showOccluded;
+
+  return (
+    <group>
+      {/* Orbit is always visible */}
+      <Orbit
+        path={satellite.orbitPath}
+        color={color}
+        opacity={0.7}
+      />
+      {/* Satellite marker only shown when not occluded, or when showOccluded is enabled */}
+      {showSatellite && (
+        <Satellite
+          position={satellite.position}
+          color={color}
+          name={satellite.name}
+          dimmed={isOccluded}
+        />
+      )}
+    </group>
+  );
+}
 
 interface SceneProps {
   satelliteA: {
@@ -26,6 +108,7 @@ interface SceneProps {
   showAntiSolar: boolean;
   showMainLos: boolean;
   showMainSunLine: boolean;
+  showOccluded?: boolean;
 }
 
 export function Scene({
@@ -37,6 +120,7 @@ export function Scene({
   showAntiSolar,
   showMainLos,
   showMainSunLine,
+  showOccluded = false,
 }: SceneProps) {
   // Calculate sun position in ECI coordinates, then convert to Three.js
   const sunPosition = useMemo(() => {
@@ -100,34 +184,22 @@ export function Scene({
 
         {/* Satellite A (Blue) */}
         {satelliteA && (
-          <group key="sat-a">
-            <Orbit
-              path={satelliteA.orbitPath}
-              color="#3b82f6"
-              opacity={0.7}
-            />
-            <Satellite
-              position={satelliteA.position}
-              color="#3b82f6"
-              name={satelliteA.name}
-            />
-          </group>
+          <SatelliteGroup
+            key="sat-a"
+            satellite={satelliteA}
+            color="#3b82f6"
+            showOccluded={showOccluded}
+          />
         )}
 
         {/* Satellite B (Red) */}
         {satelliteB && (
-          <group key="sat-b">
-            <Orbit
-              path={satelliteB.orbitPath}
-              color="#ef4444"
-              opacity={0.7}
-            />
-            <Satellite
-              position={satelliteB.position}
-              color="#ef4444"
-              name={satelliteB.name}
-            />
-          </group>
+          <SatelliteGroup
+            key="sat-b"
+            satellite={satelliteB}
+            color="#ef4444"
+            showOccluded={showOccluded}
+          />
         )}
 
         {/* Main view overlays */}
