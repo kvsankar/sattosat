@@ -71,10 +71,10 @@ uv run python conjunctions.py --profile WV3-STARLINK35956-Picture
 # With report output (detailed TLE info and conjunction table)
 uv run python conjunctions.py --profile WV3-STARLINK35956-Picture --report
 
-# Using custom TLE files
+# Using custom TLE files (example with actual files)
 uv run python conjunctions.py \
-  --tle-a ../public/data/input/tles/sat_a.tle \
-  --tle-b ../public/data/input/tles/sat_b.tle \
+  --tle-a ../public/data/input/tles/40115.tle \
+  --tle-b ../public/data/input/tles/66620.tle \
   --anchor 2025-12-19T01:30:19Z
 
 # TypeScript version (from project root)

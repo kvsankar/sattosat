@@ -66,6 +66,9 @@ class TLERecord:
 
 def load_tle_file(path: Path) -> List[TLERecord]:
     """Load TLEs from a file (2 lines per TLE)."""
+    if not path.exists():
+        print(f"Error: TLE file not found: {path}", file=sys.stderr)
+        sys.exit(1)
     content = path.read_text()
     lines = [l.strip() for l in content.split('\n') if l.strip()]
     records = []
