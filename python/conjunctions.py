@@ -293,6 +293,95 @@ def write_csv(conjunctions: List[dict], output_path: Path):
             ])
 
 
+def format_lat_lon(lat: float, lon: float) -> str:
+    """Format lat/lon as human-readable string."""
+    lat_dir = 'N' if lat >= 0 else 'S'
+    lon_dir = 'E' if lon >= 0 else 'W'
+    return f"{abs(lat):.1f}°{lat_dir}, {abs(lon):.1f}°{lon_dir}"
+
+
+def write_report(
+    tles_a: List[TLERecord],
+    tles_b: List[TLERecord],
+    conjunctions: List[dict],
+    start_time: datetime,
+    end_time: datetime,
+    output_path: Path,
+    description: str = ""
+):
+    """Write a detailed report with input TLEs and conjunction results."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_path, 'w') as f:
+        f.write("=" * 80 + "\n")
+        f.write("CONJUNCTION ANALYSIS REPORT\n")
+        f.write("=" * 80 + "\n\n")
+
+        if description:
+            f.write(f"{description}\n\n")
+
+        f.write(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
+        f.write(f"Search window: {start_time.strftime('%Y-%m-%d %H:%M')} to ")
+        f.write(f"{end_time.strftime('%Y-%m-%d %H:%M')} UTC\n\n")
+
+        # Input TLEs - Satellite A
+        f.write("-" * 80 + "\n")
+        f.write(f"INPUT TLEs - Satellite A ({len(tles_a)} TLEs)\n")
+        f.write("-" * 80 + "\n")
+        for tle in tles_a:
+            f.write(f"\nEpoch: {tle.epoch.strftime('%Y-%m-%d %H:%M UTC')}  |  ")
+            f.write(f"Mean Motion: {tle.mean_motion:.5f} rev/day\n")
+            f.write(f"{tle.line1}\n")
+            f.write(f"{tle.line2}\n")
+
+        # Input TLEs - Satellite B
+        f.write("\n" + "-" * 80 + "\n")
+        f.write(f"INPUT TLEs - Satellite B ({len(tles_b)} TLEs)\n")
+        f.write("-" * 80 + "\n")
+        for tle in tles_b:
+            f.write(f"\nEpoch: {tle.epoch.strftime('%Y-%m-%d %H:%M UTC')}  |  ")
+            f.write(f"Mean Motion: {tle.mean_motion:.5f} rev/day\n")
+            f.write(f"{tle.line1}\n")
+            f.write(f"{tle.line2}\n")
+
+        # Conjunctions table
+        f.write("\n" + "=" * 80 + "\n")
+        f.write(f"CONJUNCTIONS FOUND ({len(conjunctions)} total)\n")
+        f.write("=" * 80 + "\n\n")
+
+        if not conjunctions:
+            f.write("No conjunctions found within threshold.\n")
+        else:
+            # Header
+            f.write(f"{'#':<4} {'Distance (km)':<14} {'Time (UTC)':<22} ")
+            f.write(f"{'Sat A Location':<24} {'Sat B Location':<24}\n")
+            f.write("-" * 90 + "\n")
+
+            for i, c in enumerate(conjunctions[:50], 1):
+                loc_a = format_lat_lon(c['sat_a_lat'], c['sat_a_lon'])
+                loc_b = format_lat_lon(c['sat_b_lat'], c['sat_b_lon'])
+                f.write(f"{i:<4} {c['distance']:<14.1f} ")
+                f.write(f"{c['time'].strftime('%Y-%m-%d %H:%M:%S'):<22} ")
+                f.write(f"{loc_a:<24} {loc_b:<24}\n")
+
+            if len(conjunctions) > 50:
+                f.write(f"\n... and {len(conjunctions) - 50} more conjunctions\n")
+
+        # Summary
+        f.write("\n" + "=" * 80 + "\n")
+        f.write("SUMMARY\n")
+        f.write("=" * 80 + "\n\n")
+
+        if conjunctions:
+            closest = conjunctions[0]
+            f.write(f"Closest approach: {closest['distance']:.1f} km\n")
+            f.write(f"Time: {closest['time'].strftime('%Y-%m-%d %H:%M:%S')} UTC\n")
+            f.write(f"Satellite A: {format_lat_lon(closest['sat_a_lat'], closest['sat_a_lon'])}\n")
+            f.write(f"Satellite B: {format_lat_lon(closest['sat_b_lat'], closest['sat_b_lon'])}\n")
+
+        f.write("\n")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Find satellite conjunctions and output to CSV',
@@ -305,6 +394,9 @@ def main():
     parser.add_argument('--output', '-o', type=Path, help='Output CSV path (default: auto-generated)')
     parser.add_argument('--threshold', type=float, default=THRESHOLD_KM,
                         help=f'Maximum distance threshold in km (default: {THRESHOLD_KM})')
+    parser.add_argument('--report', '-r', action='store_true',
+                        help='Generate detailed report (.txt) alongside CSV')
+    parser.add_argument('--description', '-d', help='Description to include in report')
     parser.add_argument('--quiet', '-q', action='store_true', help='Suppress progress output')
 
     args = parser.parse_args()
@@ -376,14 +468,25 @@ def main():
     write_csv(conjunctions, output_path)
 
     if not args.quiet:
-        print(f"Output written to: {output_path}")
+        print(f"CSV written to: {output_path}")
 
-        if conjunctions:
-            print(f"\nClosest approach:")
-            c = conjunctions[0]
-            print(f"  Time: {c['time'].strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} UTC")
-            print(f"  Distance: {c['distance']:.2f} km")
-            print(f"  Relative velocity: {c['relative_velocity']:.2f} km/s")
+    # Write report if requested
+    if args.report:
+        report_path = output_path.with_suffix('.txt')
+        write_report(
+            tles_a, tles_b, conjunctions,
+            start_time, end_time, report_path,
+            description=args.description or ""
+        )
+        if not args.quiet:
+            print(f"Report written to: {report_path}")
+
+    if not args.quiet and conjunctions:
+        print(f"\nClosest approach:")
+        c = conjunctions[0]
+        print(f"  Time: {c['time'].strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} UTC")
+        print(f"  Distance: {c['distance']:.2f} km")
+        print(f"  Relative velocity: {c['relative_velocity']:.2f} km/s")
 
 
 if __name__ == "__main__":
