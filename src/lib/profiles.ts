@@ -16,7 +16,7 @@ export interface Profile {
 }
 
 // Base path for data files (works for both dev server and production)
-const DATA_BASE_PATH = '/data/input';
+const DATA_BASE_PATH = `${import.meta.env.BASE_URL}data/input`;
 
 /**
  * Parse a TLE file content into individual TLE strings.

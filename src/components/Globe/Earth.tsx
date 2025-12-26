@@ -7,9 +7,10 @@ import { getGMST } from '../../lib/sun';
 const EARTH_RADIUS = 1;
 
 // NASA Blue Marble textures (cached locally under /public)
-const EARTH_TEXTURE_URL = '/earth-blue-marble.jpg';
-const EARTH_NIGHT_URL = '/earth-night.jpg';
-const EARTH_BUMP_URL = '/earth-topology.png';
+const BASE = import.meta.env.BASE_URL;
+const EARTH_TEXTURE_URL = `${BASE}earth-blue-marble.jpg`;
+const EARTH_NIGHT_URL = `${BASE}earth-night.jpg`;
+const EARTH_BUMP_URL = `${BASE}earth-topology.png`;
 
 interface EarthProps {
   currentTime: Date;
