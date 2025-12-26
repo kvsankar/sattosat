@@ -76,8 +76,8 @@ The fullscreen graph provides:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/satorbitviz.git
-cd satorbitviz
+git clone https://github.com/your-username/sattosat.git
+cd sattosat
 
 # Install dependencies
 npm install

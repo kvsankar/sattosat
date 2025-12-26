@@ -1,6 +1,6 @@
 import type { SatelliteCatalogEntry } from '../types/satellite';
 
-const STORAGE_KEY = 'satorbitviz_recent_satellites';
+const STORAGE_KEY = 'sattosat_recent_satellites';
 const MAX_RECENT = 5;
 
 export function getRecentSatellites(): SatelliteCatalogEntry[] {

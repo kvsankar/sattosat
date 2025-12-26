@@ -5,9 +5,9 @@ import { getEmbeddedTleTexts } from './embeddedTles';
 const CELESTRAK_BASE = 'https://celestrak.org/NORAD/elements/gp.php';
 
 // Cache keys
-const CACHE_KEY_CATALOG = 'satorbitviz_catalog';
-const CACHE_KEY_TLE_PREFIX = 'satorbitviz_tle_';
-const CACHE_KEY_SETTINGS = 'satorbitviz_cache_settings';
+const CACHE_KEY_CATALOG = 'sattosat_catalog';
+const CACHE_KEY_TLE_PREFIX = 'sattosat_tle_';
+const CACHE_KEY_SETTINGS = 'sattosat_cache_settings';
 
 // Default cache durations (in milliseconds)
 const DEFAULT_CATALOG_CACHE_MS = 24 * 60 * 60 * 1000; // 24 hours
