@@ -191,78 +191,7 @@ CONCLUSION: Neither scenario produces a distance close to 241 km on Dec 18.
 
 ---
 
-### 3. scan_dec17.py
-
-**Intent:** Scan Dec 15-19 to understand the synodic (envelope) period pattern and verify why Dec 18 has no close approach.
-
-**Command:**
-```bash
-uv run python python/investigation/scan_dec17.py
-```
-
-**Results:**
-```
-======================================================================
-Synodic Period Analysis: Dec 15-19, 2025
-======================================================================
-
-Scanning for all close approaches (< 1000 km) over 5 days
-to verify the ~44 hour envelope period pattern.
-
-Scanning 2025-12-15 to 2025-12-19...
-
-Found 10 close approaches (< 1000 km):
-
-======================================================================
-2025-12-15
-======================================================================
-   247.7 km at 23:08:00 UTC  |  WV3:  53.3°, -179.0°  |  SL:  52.8°,  179.0°
-
-======================================================================
-2025-12-17
-======================================================================
-   204.2 km at 12:19:00 UTC  |  WV3:  52.9°,  -16.9°  |  SL:  53.3°,  -17.5°
-
-======================================================================
-2025-12-18
-======================================================================
-   983.1 km at 23:55:30 UTC  |  WV3:  46.7°,  166.9°  |  SL:  53.3°,  159.8°
-
-======================================================================
-2025-12-19
-======================================================================
-   370.2 km at 01:30:30 UTC  |  WV3:  54.1°,  145.7°  |  SL:  52.6°,  149.2°
-
-======================================================================
-ENVELOPE PERIOD ANALYSIS
-======================================================================
-
-Envelope minima (closest approach per conjunction window):
-
-#              Date/Time   Distance     Interval Location
-----------------------------------------------------------------------
-1   2025-12-15 23:08        247.7 km               53.3°N, -179.0°E
-2   2025-12-17 12:19        204.2 km   37.2 hours  52.9°N,  -16.9°E
-3   2025-12-19 01:30        370.2 km   37.2 hours  54.1°N,  145.7°E
-
-Average envelope period: 37.2 hours (1.55 days)
-Expected (synodic):      ~44 hours (~1.8 days)
-
-======================================================================
-DEC 18 ANALYSIS
-======================================================================
-Closest approach on Dec 18: 983.1 km at 23:55:30 UTC
-
-NOTE: WV3 performed an orbital maneuver on Dec 17 ~17:32 UTC.
-This may affect the approach pattern after that time.
-======================================================================
-```
-
-**Finding:** The synodic period is ~37.2 hours, causing close approaches on Dec 15, 17, and 19 - naturally skipping Dec 18. Dec 18's only approach (983 km) is marginal. The maneuver is not the cause; the natural period inherently misses Dec 18.
-
----
-
-### 4. backpropagate_dec19.py
+### 3. backpropagate_dec19.py
 
 **Intent:** Test whether the Dec 19 (post-anomaly) TLE for Starlink-35956 can back-predict the Dec 18 imaging conditions. This checks if Starlink was already in an anomalous orbit during the imaging event.
 
@@ -326,7 +255,7 @@ Dec 18 TLE (normal orbit):    976.8 km at 23:55:30 UTC
 
 ---
 
-### 5. wv3_maneuver_analysis.py
+### 4. wv3_maneuver_analysis.py
 
 **Intent:** Analyze whether the WV3 orbital maneuver on Dec 17 ~17:32 UTC caused Dec 18 to miss the close approach window.
 
@@ -395,51 +324,9 @@ synodic period (~37 hours), NOT because of the WV3 maneuver.
 
 ---
 
-### 6. compare_with_spacetrack.py
-
-**Intent:** Verify that the embedded TLEs match Space-Track.org data, ruling out data source discrepancies as a cause of the distance difference.
-
-**Command:**
-```bash
-uv run python python/investigation/compare_with_spacetrack.py
-```
-
-**Results:**
-```
-======================================================================
-Comparing Embedded TLEs vs Space-Track TLEs
-======================================================================
-
-Embedded TLEs:    WV3=10, Starlink=12
-Space-Track TLEs: WV3=26, Starlink=12
-
-No new Starlink TLEs from Space-Track (same as embedded)
-
-======================================================================
-CONJUNCTION SEARCH RESULTS
-======================================================================
-
-Using EMBEDDED TLEs:
-  204.2 km at 2025-12-17 12:18:59 UTC
-  350.4 km at 2025-12-19 01:30:19 UTC
-  383.1 km at 2025-12-19 00:42:53 UTC
-
-Using SPACE-TRACK TLEs:
-  204.2 km at 2025-12-17 12:18:59 UTC
-  350.4 km at 2025-12-19 01:30:19 UTC
-  383.1 km at 2025-12-19 00:42:53 UTC
-
-Difference in closest approach: 0.0 km
-```
-
-**Finding:** Embedded TLEs produce identical results to Space-Track TLEs. The discrepancy between reported and calculated distances is not due to TLE data source differences.
-
----
-
 ## Supporting Files
 
 - `wv3_pairs.json` - Satellite pair configurations for WV3-specific envelope analysis
-- `spacetrack_tles/` - Historical TLE data downloaded from Space-Track.org
 
 ## Summary of Investigation
 
@@ -451,7 +338,6 @@ Difference in closest approach: 0.0 km
 | What if Starlink was over Alaska? | Checked - minimum 1168 km on Dec 18 (western Aleutians) |
 | Why no close approach on Dec 18? | Natural ~37h synodic period skips Dec 18 |
 | Did WV3 maneuver cause this? | No - maneuver only changed period by 1.3% |
-| Is it a TLE data issue? | No - Space-Track gives identical results |
 | Can post-anomaly TLE explain it? | No - still gives >600 km |
 
 ## Conclusion
