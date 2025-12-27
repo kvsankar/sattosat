@@ -14,7 +14,7 @@ On December 18, 2025, Maxar's WorldView-3 satellite reportedly captured an image
 |------|--------|---------|
 | Reproduce the 241 km distance | `verify_conjunction.py` | • **Dec 17 12:18:59 UTC: 204.2 km** at 52.9°N, 16.9°W (Atlantic Ocean)<br>• Dec 18: No approach <500 km; closest was 983 km at 23:55 UTC<br>• Dec 19 00:42:53 UTC: 383.1 km at 51.0°S, 23.6°W (South Atlantic)<br>• Dec 19 01:30:19 UTC: 350.4 km at 54.8°N, 146.0°E (Sea of Okhotsk) |
 | Confirm Alaska as location | `scan_alaska.py` | • WV3 over Alaska: Dec 18 23:54:30 UTC, 1156.7 km, WV3 at 50.3°N, 168.3°E (western Aleutians)<br>• Starlink over Alaska: Dec 18 23:56:20 UTC, 1168.0 km, Starlink at 53.2°N, 165.0°E (western Aleutians) |
-| Check if post-anomaly TLE explains it | `backpropagate_dec19.py` | Using Dec 19 TLE (Starlink in decay, n=15.452) back-propagated to Dec 18:<br>• Dec 18 23:55:00 UTC: 661.6 km at 48.5°N, 167.6°E (western Aleutians)<br>• Normal Dec 18 TLE (n=15.493) gives 976.8 km at same time<br>• Neither reproduces 241 km |
+| Check if post-anomaly TLE explains it | `backpropagate_dec19.py` | Using Starlink TLE epoch 2025-12-19 22:47:58 UTC (n=15.452, decayed) back-propagated to Dec 18:<br>• Dec 18 23:55:00 UTC: 661.6 km, WV3 at 48.5°N, 167.6°E, Starlink at 53.3°N, 164.0°E (western Aleutians)<br>• No times found with distance ~241 km<br>• For comparison, normal Dec 18 TLE (n=15.493) gives 976.8 km at same time |
 
 ## Remaining Gaps
 
