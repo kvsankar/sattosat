@@ -14,14 +14,7 @@ On December 18, 2025, Maxar's WorldView-3 satellite reportedly captured an image
 |------|--------|---------|
 | Reproduce the 241 km distance | `verify_conjunction.py` | • **Dec 17 12:18:59 UTC: 204.2 km** at 52.9°N, 16.9°W (Atlantic Ocean)<br>• Dec 18: No approach <500 km; closest was 983 km at 23:55 UTC<br>• Dec 19 00:42:53 UTC: 383.1 km at 51.0°S, 23.6°W (South Atlantic)<br>• Dec 19 01:30:19 UTC: 350.4 km at 54.8°N, 146.0°E (Sea of Okhotsk) |
 | Confirm Alaska as location | `scan_alaska.py` | • WV3 over Alaska: Dec 18 23:54:30 UTC, 1156.7 km, WV3 at 50.3°N, 168.3°E (western Aleutians)<br>• Starlink over Alaska: Dec 18 23:56:20 UTC, 1168.0 km, Starlink at 53.2°N, 165.0°E (western Aleutians) |
-| Check if WV3 maneuver caused shift | `wv3_maneuver_analysis.py` | Maneuver NOT the cause; natural ~37h period skips Dec 18 |
 | Check if Starlink decay explains it | `backpropagate_dec19.py` | Back-propagated TLE gives 661 km, not 241 km |
-
-## Resolved Analysis Gaps
-
-1. **Starlink position checked**: `scan_alaska.py` checks BOTH scenarios - when WV3 is over Alaska AND when Starlink is over Alaska. Neither produces a distance close to 241 km on Dec 18.
-
-2. **Synodic period analyzed**: `wv3_maneuver_analysis.py` shows close approaches occur every ~37.2 hours (Dec 15, 17, 19) - naturally skipping Dec 18. The WV3 maneuver changed the period by only 1.3%, NOT enough to cause the gap.
 
 ## Remaining Gaps
 
@@ -255,75 +248,6 @@ Dec 18 TLE (normal orbit):    976.8 km at 23:55:30 UTC
 
 ---
 
-### 4. wv3_maneuver_analysis.py
-
-**Intent:** Analyze whether the WV3 orbital maneuver on Dec 17 ~17:32 UTC caused Dec 18 to miss the close approach window.
-
-**Command:**
-```bash
-uv run python python/investigation/wv3_maneuver_analysis.py
-```
-
-**Results:**
-```
-======================================================================
-WV3 ORBITAL MANEUVER ANALYSIS - Dec 17, 2025 ~17:32 UTC
-======================================================================
-
---- WV3 ORBITAL PARAMETERS ---
-Parameter                          Before           After          Change
-----------------------------------------------------------------------
-Mean Motion (rev/day)           14.855237       14.846608       -0.008628
-Period (min)                      96.9355         96.9919         +0.0563
-Altitude (km)                       611.9           614.7            +2.7
-Eccentricity                    0.0005162       0.0001686      -0.0003476
-
---- SYNODIC PERIOD WITH STARLINK-35956 ---
-Metric                                       Before           After          Change
---------------------------------------------------------------------------------
-Synodic Period (hours)                        37.61           37.11           -0.50
-Synodic Period (days)                         1.567           1.546          -0.021
-% Change                                                                      -1.3%
-
-======================================================================
-CLOSE APPROACH TIMING ANALYSIS
-======================================================================
-
-Observed close approaches (from synodic period analysis):
-#              Date/Time   Distance Hours since prev
--------------------------------------------------------
-1       2025-12-15 23:08    247.7 km
-2       2025-12-17 12:19    204.2 km  37.2 hours
-3       2025-12-19 01:30    370.2 km  37.2 hours
-
-======================================================================
-KEY FINDINGS
-======================================================================
-
-1. SYNODIC PERIOD: The observed envelope period is ~37.2 hours.
-
-2. DEC 18 GAP: With a ~37 hour period:
-   - Dec 15 23:08 + 37h = Dec 17 12:08 (actual: 12:19) ✓
-   - Dec 17 12:19 + 37h = Dec 19 01:19 (actual: 01:30) ✓
-   The period naturally skips Dec 18.
-
-3. THE MANEUVER: WV3 maneuvered AFTER the Dec 17 12:19 close approach.
-   The maneuver changed the synodic period by only 1.3%, which is NOT
-   enough to explain Dec 18 missing a close approach.
-
-4. REAL EXPLANATION: The ~37 hour synodic period naturally produces
-   close approaches every ~1.5 days, skipping Dec 18 entirely.
-
-======================================================================
-CONCLUSION: Dec 18 has no close approach because of the natural
-synodic period (~37 hours), NOT because of the WV3 maneuver.
-======================================================================
-```
-
-**Finding:** The WV3 maneuver changed the synodic period by only 1.3% - NOT enough to explain Dec 18 missing a close approach. The natural ~37 hour period inherently produces approaches on Dec 15, 17, and 19, skipping Dec 18. The maneuver is NOT the cause.
-
----
-
 ## Supporting Files
 
 - `wv3_pairs.json` - Satellite pair configurations for WV3-specific envelope analysis
@@ -336,8 +260,6 @@ synodic period (~37 hours), NOT because of the WV3 maneuver.
 | When was the ~241 km approach? | Dec 17 12:19 UTC (204 km) - wrong date |
 | Was it over Alaska? | No - over Atlantic Ocean (~17°W) - wrong location |
 | What if Starlink was over Alaska? | Checked - minimum 1168 km on Dec 18 (western Aleutians) |
-| Why no close approach on Dec 18? | Natural ~37h synodic period skips Dec 18 |
-| Did WV3 maneuver cause this? | No - maneuver only changed period by 1.3% |
 | Can post-anomaly TLE explain it? | No - still gives >600 km |
 
 ## Conclusion
@@ -346,9 +268,8 @@ The reported 241 km imaging distance over Alaska on Dec 18 **cannot be reproduce
 
 **What we found:**
 - Closest approach: 204 km on Dec 17 12:19 UTC over the Atlantic Ocean
-- Dec 18 had no close approach due to the natural ~37 hour synodic period
+- Dec 18 had no close approach <500 km (closest was 983 km)
 - Best Alaska geometry on Dec 18: ~1160 km over western Aleutians at 23:54 UTC
-- The WV3 maneuver is NOT responsible for Dec 18 missing the approach window
 
 **Possible explanations for the discrepancy:**
 - Proprietary ephemeris data (not public TLEs)
