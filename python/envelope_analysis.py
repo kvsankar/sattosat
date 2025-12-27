@@ -331,35 +331,6 @@ def fetch_tle_from_celestrak(norad_id: int) -> Optional[OrbitalElements]:
     return None
 
 
-def print_result_summary(result: EnvelopeResult):
-    """Print summary of envelope analysis."""
-    print(f"\n{'='*70}")
-    print(f"Satellite Pair: {result.sat_a.name} ↔ {result.sat_b.name}")
-    print(f"{'='*70}")
-
-    print(f"\nOrbital Parameters:")
-    print(f"  {'Parameter':<20} {'Sat A':>15} {'Sat B':>15} {'Delta':>12}")
-    print(f"  {'-'*62}")
-    print(f"  {'Altitude (km)':<20} {result.sat_a.altitude_km:>15.1f} {result.sat_b.altitude_km:>15.1f} {result.delta_altitude:>12.1f}")
-    print(f"  {'Inclination (°)':<20} {result.sat_a.inclination:>15.2f} {result.sat_b.inclination:>15.2f} {result.delta_inclination:>12.2f}")
-    print(f"  {'RAAN (°)':<20} {result.sat_a.raan:>15.2f} {result.sat_b.raan:>15.2f} {result.delta_raan:>12.2f}")
-    print(f"  {'Period (min)':<20} {result.sat_a.period_min:>15.2f} {result.sat_b.period_min:>15.2f} {abs(result.sat_a.period_min - result.sat_b.period_min):>12.2f}")
-
-    print(f"\nClose Approaches:")
-    print(f"  Total approaches (6 days): {len(result.minima_times)}")
-    print(f"  Mean approach period: {result.mean_approach_period:.2f} hours ({result.mean_approach_period*60:.1f} min)")
-    print(f"  Minimum distance: {result.min_distance:.1f} km")
-    print(f"  Maximum of minima: {result.max_min_distance:.1f} km")
-
-    print(f"\nEnvelope (deepest dips):")
-    print(f"  Number of envelope minima: {len(result.envelope_minima_times)}")
-    if result.envelope_periods:
-        print(f"  Mean envelope period: {result.mean_envelope_period:.2f} hours")
-        print(f"  Envelope period range: {min(result.envelope_periods):.2f} - {max(result.envelope_periods):.2f} hours")
-    else:
-        print(f"  Mean envelope period: N/A (need more data)")
-
-    print(f"\nRelative velocity: {result.relative_velocity_range[0]:.2f} - {result.relative_velocity_range[1]:.2f} km/s")
 
 
 def save_envelope_data(result: EnvelopeResult, output_path: Path):
@@ -430,13 +401,11 @@ def load_satellite_pairs() -> List[Tuple[int, int, str]]:
 
 
 def main():
-    print("Distance Envelope Analysis")
-    print("=" * 70)
+    print("Distance Envelope Analysis", file=sys.stderr)
+    print("Fetching TLEs from Celestrak...", file=sys.stderr)
 
     # Load pairs from config
     satellite_pairs = load_satellite_pairs()
-    print(f"\nLoaded {len(satellite_pairs)} satellite pairs from config")
-    print("Fetching TLEs from Celestrak...")
 
     # Collect all unique NORAD IDs
     all_ids = set()
@@ -447,15 +416,11 @@ def main():
     # Fetch TLEs
     satellites = {}
     for norad_id in sorted(all_ids):
-        print(f"  Fetching {norad_id}...", end=" ", flush=True)
         sat = fetch_tle_from_celestrak(norad_id)
         if sat:
             satellites[norad_id] = sat
-            print(f"OK ({sat.name})")
-        else:
-            print("FAILED")
 
-    print(f"\nSuccessfully fetched {len(satellites)}/{len(all_ids)} satellites")
+    print(f"Fetched {len(satellites)}/{len(all_ids)} TLEs, analyzing...", file=sys.stderr)
 
     # Analyze each pair
     results = []
@@ -463,46 +428,32 @@ def main():
 
     for id_a, id_b, description in satellite_pairs:
         if id_a not in satellites or id_b not in satellites:
-            print(f"\nSkipping: {description} (missing TLE)")
             continue
 
         sat_a = satellites[id_a]
         sat_b = satellites[id_b]
-
-        print(f"\nAnalyzing: {description}")
         result = analyze_envelope(sat_a, sat_b, duration_days=14.0, step_minutes=1.0)
         results.append((description, result))
-
-        print_result_summary(result)
 
         # Save to JSON
         filename = f"envelope_{id_a}_{id_b}.json"
         save_envelope_data(result, output_dir / filename)
 
-    # Summary table
-    print("\n" + "=" * 120)
-    print("SUMMARY TABLE")
-    print("=" * 120)
-    print(f"{'Pair':<45} {'Δ Alt':>8} {'Δ Inc':>7} {'Δ RAAN':>8} {'Approach':>10} {'Envelope':>10} {'Min Dist':>10}")
-    print(f"{'':45} {'(km)':>8} {'(°)':>7} {'(°)':>8} {'(hrs)':>10} {'(hrs)':>10} {'(km)':>10}")
-    print("-" * 120)
-
-    for desc, result in results:
-        env_period = f"{result.mean_envelope_period:.2f}" if result.envelope_periods else "N/A"
-        print(f"{desc:<45} {result.delta_altitude:>8.0f} {result.delta_inclination:>7.1f} "
-              f"{result.delta_raan:>8.1f} {result.mean_approach_period:>10.2f} {env_period:>10} {result.min_distance:>10.1f}")
-
     # Sort by envelope period
-    sorted_results = sorted(results, key=lambda x: x[1].mean_envelope_period if x[1].envelope_periods else 999)
+    results.sort(key=lambda x: x[1].mean_envelope_period if x[1].envelope_periods else 999)
 
-    print("\nSorted by envelope period (shortest to longest):")
-    for desc, result in sorted_results:
-        if result.envelope_periods:
-            print(f"  {result.mean_envelope_period:>6.2f} hrs - {desc}")
-        else:
-            print(f"     N/A - {desc}")
+    # Print single summary table
+    print(f"{'Pair':<45} {'Δ Alt':>7} {'Δ Inc':>6} {'Δ RAAN':>7} {'Approach':>9} {'Envelope':>9} {'Min':>7} {'Max':>7} {'Approaches':>10}")
+    print(f"{'':45} {'(km)':>7} {'(°)':>6} {'(°)':>7} {'(hrs)':>9} {'(hrs)':>9} {'(km)':>7} {'(km)':>7} {'(14 days)':>10}")
+    print("-" * 130)
 
-    print(f"\nData saved to: {output_dir}")
+    for desc, r in results:
+        env_period = f"{r.mean_envelope_period:.1f}" if r.envelope_periods else "N/A"
+        print(f"{desc:<45} {r.delta_altitude:>7.0f} {r.delta_inclination:>6.1f} "
+              f"{r.delta_raan:>7.1f} {r.mean_approach_period:>9.2f} {env_period:>9} "
+              f"{r.min_distance:>7.0f} {r.max_min_distance:>7.0f} {len(r.minima_times):>10}")
+
+    print(f"\nJSON saved to: {output_dir}", file=sys.stderr)
 
 
 if __name__ == "__main__":
