@@ -8,11 +8,22 @@ For general-purpose analysis scripts, see [USAGE_SCRIPTS.md](../../USAGE_SCRIPTS
 
 On December 18, 2025, Maxar's WorldView-3 satellite reportedly captured an image of Starlink-35956 at 241 km distance over Alaska. Our SatToSat conjunction finder (anchored at Dec 19 01:30 UTC) calculated the closest approach at 350.4 km. These scripts investigate this discrepancy.
 
+## All Close Approaches (Dec 17-19)
+
+Using public TLE data, these are all close approaches < 500 km in the 3-day window:
+
+| Date | Time (UTC) | Distance | Location | Notes |
+|------|------------|----------|----------|-------|
+| Dec 17 | 12:18:59 | **204.2 km** | 52.9°N, 16.9°W | Atlantic Ocean, ~37 km from reported 241 km |
+| Dec 18 | — | — | — | No approaches < 500 km (closest: 983 km) |
+| Dec 19 | 00:42:53 | 383.1 km | 51.0°S, 23.6°W | South Atlantic |
+| Dec 19 | 01:30:19 | 350.4 km | 54.8°N, 146.0°E | Sea of Okhotsk |
+
 ## Investigation Goals
 
 | Goal | Script | Finding |
 |------|--------|---------|
-| Reproduce the 241 km distance | `verify_conjunction.py` | Closest found: 204 km on Dec 17 12:19 UTC |
+| Reproduce the 241 km distance | `verify_conjunction.py` | Closest: 204 km on Dec 17 (within 37 km of reported 241 km) |
 | Confirm Dec 18 as imaging date | `scan_dec17.py` | Dec 18 closest was 983 km; synodic period ~37h skips Dec 18 |
 | Confirm Alaska as location | `scan_alaska.py` | WV3 over Alaska: 1157 km; Starlink over Alaska: 1168 km |
 | Rule out TLE data source issues | `compare_with_spacetrack.py` | Space-Track gives identical results |
@@ -471,6 +482,6 @@ The reported 241 km imaging distance over Alaska on Dec 18 **cannot be reproduce
 **Possible explanations for the discrepancy:**
 - Proprietary ephemeris data (not public TLEs)
 - Different distance calculation method (slant range vs center-to-center)
-- Error in the reported date (Dec 17 vs Dec 18) or location (Atlantic vs Alaska)
+- The 204 km approach on Dec 17 over the Atlantic is the closest match to 241 km
 
-**Investigation status:** All identified gaps have been addressed. The discrepancy remains unexplained with public data.
+**Investigation status:** All identified gaps have been addressed. The discrepancy between the reported event (241 km, Dec 18, Alaska) and public TLE data remains unexplained.
