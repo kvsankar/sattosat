@@ -443,15 +443,16 @@ def main():
     results.sort(key=lambda x: x[1].mean_envelope_period if x[1].envelope_periods else 999)
 
     # Print single summary table
-    print(f"{'Pair':<45} {'Δ Alt':>7} {'Δ Inc':>6} {'Δ RAAN':>7} {'Approach':>9} {'Envelope':>9} {'Min':>7} {'Max':>7} {'Approaches':>10}")
-    print(f"{'':45} {'(km)':>7} {'(°)':>6} {'(°)':>7} {'(hrs)':>9} {'(hrs)':>9} {'(km)':>7} {'(km)':>7} {'(14 days)':>10}")
-    print("-" * 130)
+    col1 = 55  # Pair description column width
+    print(f"{'Pair':<{col1}}  {'Δ Alt':>7}  {'Δ Inc':>6}  {'Δ RAAN':>6}  {'Approach':>8}  {'Envelope':>8}  {'Min':>6}  {'Max':>6}  {'Count':>5}")
+    print(f"{'':<{col1}}  {'(km)':>7}  {'(°)':>6}  {'(°)':>6}  {'(hrs)':>8}  {'(hrs)':>8}  {'(km)':>6}  {'(km)':>6}  {'':>5}")
+    print("-" * (col1 + 75))
 
     for desc, r in results:
         env_period = f"{r.mean_envelope_period:.1f}" if r.envelope_periods else "N/A"
-        print(f"{desc:<45} {r.delta_altitude:>7.0f} {r.delta_inclination:>6.1f} "
-              f"{r.delta_raan:>7.1f} {r.mean_approach_period:>9.2f} {env_period:>9} "
-              f"{r.min_distance:>7.0f} {r.max_min_distance:>7.0f} {len(r.minima_times):>10}")
+        print(f"{desc:<{col1}}  {r.delta_altitude:>7.0f}  {r.delta_inclination:>6.1f}  "
+              f"{r.delta_raan:>6.1f}  {r.mean_approach_period:>8.2f}  {env_period:>8}  "
+              f"{r.min_distance:>6.0f}  {r.max_min_distance:>6.0f}  {len(r.minima_times):>5}")
 
     print(f"\nJSON saved to: {output_dir}", file=sys.stderr)
 
