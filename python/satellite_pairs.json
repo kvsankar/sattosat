@@ -57,30 +57,6 @@
       "approx_inclination_b_deg": 98.2
     },
     {
-      "id": "wv3_starlink_healthy",
-      "norad_a": 40115,
-      "norad_b": 60330,
-      "description": "WorldView-3 vs Starlink-32153 (~97.4deg vs ~53deg)",
-      "notes": "Healthy Starlink at ~475km for general studies",
-      "observed_envelope_hours": 51.5,
-      "approx_altitude_a_km": 615,
-      "approx_inclination_a_deg": 97.9,
-      "approx_altitude_b_km": 475,
-      "approx_inclination_b_deg": 53.2
-    },
-    {
-      "id": "wv3_starlink35956",
-      "norad_a": 40115,
-      "norad_b": 66620,
-      "description": "WorldView-3 vs STARLINK-35956 (blog post subject)",
-      "notes": "Anomalous/decaying satellite from Dec 18 imaging event",
-      "observed_envelope_hours": 42.4,
-      "approx_altitude_a_km": 615,
-      "approx_inclination_a_deg": 97.9,
-      "approx_altitude_b_km": 447,
-      "approx_inclination_b_deg": 53.2
-    },
-    {
       "id": "hubble_iss",
       "norad_a": 20580,
       "norad_b": 25544,
