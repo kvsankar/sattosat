@@ -11,7 +11,7 @@ For UI documentation, see [USAGE_UI.md](USAGE_UI.md).
 3. [Find Conjunctions Using Custom TLEs](#find-conjunctions-using-custom-tles)
 4. [Compare Python vs TypeScript Results](#compare-python-vs-typescript-results)
 5. [Analyze Envelope Periods](#analyze-envelope-periods-empirical)
-6. [Investigate a Specific Conjunction Event](#investigate-a-specific-conjunction-event)
+6. [Starlink-35956 Investigation Scripts](#investigate-a-specific-conjunction-event)
 7. [Fetch Historical TLEs](#fetch-historical-tles)
 8. [Capture Screenshots](#capture-screenshots)
 
@@ -211,10 +211,15 @@ Pairs are configured in `python/satellite_pairs.json`:
 
 | Pair ID | Satellites | Notes |
 |---------|------------|-------|
-| `wv3_starlink_healthy` | WorldView-3 vs Starlink-32153 | ~51 hour envelope period |
-| `wv3_starlink35956` | WorldView-3 vs Starlink-35956 | Anomalous satellite from Dec 2025 |
+| `starlink_same_launch` | Two Starlinks from same launch | Same orbital plane - never get close |
+| `starlink_diff_shells` | Starlink ~540km vs ~340km | ~89 hour envelope period |
+| `iss_starlink` | ISS vs Starlink | ~120 hour envelope period |
 | `iss_noaa20` | ISS vs NOAA-20 | ~18 hour envelope period |
-| `starlink_same_launch` | Two Starlinks from same launch | Never get close (same orbital plane) |
+| `noaa20_landsat9` | NOAA-20 vs Landsat-9 | Both sun-sync, ~64 hour envelope |
+| `hubble_iss` | Hubble vs ISS | ~119 hour envelope period |
+| `gps_iss` | GPS IIR-14 vs ISS | MEO vs LEO comparison |
+
+For WV3-specific pairs, see [python/investigation/wv3_pairs.json](python/investigation/wv3_pairs.json).
 
 ### Output
 
@@ -235,81 +240,16 @@ See the [blog post](https://blog.sankara.net/posts/starlink-photo-investigation/
 
 ---
 
-## Investigate a Specific Conjunction Event
+## Starlink-35956 Investigation Scripts
 
 <a id="investigate-a-specific-conjunction-event"></a>
 
-Scripts in `python/investigation/` were created to investigate the Starlink-35956 imaging event and the discrepancy between reported (241 km) and calculated (350 km) distances.
+Scripts in `python/investigation/` were created to investigate the Starlink-35956 imaging event of December 2025. These are one-off analysis scripts with documented results.
 
-### Deep Verification
-
-Comprehensive analysis of the WV3/Starlink-35956 conjunction:
-
-```bash
-uv run python python/investigation/verify_conjunction.py
-```
-
-**Script:** `python/investigation/verify_conjunction.py`
-
-### Scan for Alaska Passes
-
-Find all WV3/Starlink passes over Alaska on Dec 18, 2025:
-
-```bash
-uv run python python/investigation/scan_alaska.py
-```
-
-**Script:** `python/investigation/scan_alaska.py`
-
-### Compare Dec 17 vs Dec 18 Geometry
-
-Understand orbital patterns by comparing approaches on consecutive days:
-
-```bash
-uv run python python/investigation/scan_dec17.py
-```
-
-**Script:** `python/investigation/scan_dec17.py`
-
-### Back-Propagate Post-Anomaly TLE
-
-Test whether Dec 19 (post-anomaly) TLE can predict Dec 18 imaging conditions:
-
-```bash
-uv run python python/investigation/backpropagate_dec19.py
-```
-
-**Script:** `python/investigation/backpropagate_dec19.py`
-
-### Analyze WV3 Maneuver Effects
-
-Study how the Dec 17 WV3 orbital maneuver affected conjunction patterns:
-
-```bash
-uv run python python/investigation/wv3_maneuver_analysis.py
-```
-
-**Script:** `python/investigation/wv3_maneuver_analysis.py`
-
-### Compare TLE Sources
-
-Compare conjunction results using Space-Track TLEs vs embedded TLEs:
-
-```bash
-uv run python python/investigation/compare_with_spacetrack.py
-```
-
-**Script:** `python/investigation/compare_with_spacetrack.py`
-
-### WV3-Specific Envelope Analysis
-
-Analyze envelope periods for WV3 satellite pairs:
-
-```bash
-uv run python python/envelope_analysis.py --config python/investigation/wv3_pairs.json
-```
-
-**Config:** `python/investigation/wv3_pairs.json`
+See **[python/investigation/README.md](python/investigation/README.md)** for:
+- Each script's intent and methodology
+- Verbatim output from each analysis
+- Findings and conclusions
 
 ---
 
