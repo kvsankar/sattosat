@@ -219,8 +219,6 @@ Pairs are configured in `python/satellite_pairs.json`:
 | `hubble_iss` | Hubble vs ISS | ~119 hour envelope period |
 | `gps_iss` | GPS IIR-14 vs ISS | MEO vs LEO comparison |
 
-For WV3-specific pairs, see [python/investigation/wv3_pairs.json](python/investigation/wv3_pairs.json).
-
 ### Output
 
 - **Console:** Summary table with empirical envelope period, theoretical (synodic) period, min/max distances
@@ -240,16 +238,27 @@ See the [blog post](https://blog.sankara.net/posts/starlink-photo-investigation/
 
 ---
 
-## Starlink-35956 Investigation Scripts
+## Starlink-35956 Investigation
 
 <a id="investigate-a-specific-conjunction-event"></a>
 
-Scripts in `python/investigation/` were created to investigate the Starlink-35956 imaging event of December 2025. These are one-off analysis scripts with documented results.
+The `python/investigation/` directory contains analysis of the Starlink-35956 imaging event of December 2025. The investigation uses the main `conjunctions.py` script with specific options.
 
-See **[python/investigation/README.md](python/investigation/README.md)** for:
-- Each script's intent and methodology
-- Verbatim output from each analysis
-- Findings and conclusions
+### Key Commands
+
+```bash
+# Find all close approaches Dec 17-19
+uv run python python/conjunctions.py \
+  --tle-a src/lib/embedded/40115.tle --tle-b src/lib/embedded/66620.tle \
+  --start 2025-12-17T00:00:00Z --end 2025-12-20T00:00:00Z --threshold 1000
+
+# Find approaches over Alaska
+uv run python python/conjunctions.py \
+  --tle-a src/lib/embedded/40115.tle --tle-b src/lib/embedded/66620.tle \
+  --start 2025-12-17T00:00:00Z --end 2025-12-20T00:00:00Z --threshold 2000 --region alaska
+```
+
+See **[python/investigation/README.md](python/investigation/README.md)** for full analysis with verbatim output and conclusions.
 
 ---
 
