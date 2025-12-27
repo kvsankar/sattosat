@@ -12,7 +12,7 @@ On December 18, 2025, Maxar's WorldView-3 satellite reportedly captured an image
 
 | Goal | Script | Finding |
 |------|--------|---------|
-| Reproduce the 241 km distance | `verify_conjunction.py` | **204 km on Dec 17 12:19 UTC** (Atlantic Ocean); Dec 18 had no approach <500 km (closest: 983 km); Dec 19 had 350 km and 383 km |
+| Reproduce the 241 km distance | `verify_conjunction.py` | • **Dec 17 12:18:59 UTC: 204.2 km** at 52.9°N, 16.9°W (Atlantic Ocean)<br>• Dec 18: No approach <500 km; closest was 983 km at 23:55 UTC<br>• Dec 19 00:42:53 UTC: 383.1 km at 51.0°S, 23.6°W (South Atlantic)<br>• Dec 19 01:30:19 UTC: 350.4 km at 54.8°N, 146.0°E (Sea of Okhotsk) |
 | Confirm Dec 18 as imaging date | `scan_dec17.py` | Dec 18 closest was 983 km; synodic period ~37h skips Dec 18 |
 | Confirm Alaska as location | `scan_alaska.py` | WV3 over Alaska: 1157 km; Starlink over Alaska: 1168 km |
 | Rule out TLE data source issues | `compare_with_spacetrack.py` | Space-Track gives identical results |
