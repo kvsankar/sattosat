@@ -564,6 +564,18 @@ def main():
 
     if not args.quiet:
         print(f"CSV written to: {output_path}")
+        # Print formatted table to stdout
+        if conjunctions:
+            print()
+            print(f"{'#':<3} {'Time (UTC)':<24} {'Dist (km)':<10} {'Vel (km/s)':<10} {'Sat A Location':<22} {'Sat B Location':<22}")
+            print("-" * 95)
+            for i, c in enumerate(conjunctions, 1):
+                time_str = c['time'].strftime('%Y-%m-%d %H:%M:%S')
+                loc_a = format_lat_lon(c['sat_a_lat'], c['sat_a_lon'])
+                loc_b = format_lat_lon(c['sat_b_lat'], c['sat_b_lon'])
+                vel = c.get('relative_velocity', 0)
+                vel_str = f"{vel:.2f}" if vel else "-"
+                print(f"{i:<3} {time_str:<24} {c['distance']:<10.2f} {vel_str:<10} {loc_a:<22} {loc_b:<22}")
 
     # Write report if requested
     if args.report:
