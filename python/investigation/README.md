@@ -13,7 +13,6 @@ On December 18, 2025, Maxar's WorldView-3 satellite reportedly captured an image
 | Goal | Script | Finding |
 |------|--------|---------|
 | Reproduce the 241 km distance | `verify_conjunction.py` | • **Dec 17 12:18:59 UTC: 204.2 km** at 52.9°N, 16.9°W (Atlantic Ocean)<br>• Dec 18: No approach <500 km; closest was 983 km at 23:55 UTC<br>• Dec 19 00:42:53 UTC: 383.1 km at 51.0°S, 23.6°W (South Atlantic)<br>• Dec 19 01:30:19 UTC: 350.4 km at 54.8°N, 146.0°E (Sea of Okhotsk) |
-| Confirm Dec 18 as imaging date | `scan_dec17.py` | Dec 18 closest was 983 km; synodic period ~37h skips Dec 18 |
 | Confirm Alaska as location | `scan_alaska.py` | WV3 over Alaska: 1157 km; Starlink over Alaska: 1168 km |
 | Rule out TLE data source issues | `compare_with_spacetrack.py` | Space-Track gives identical results |
 | Check if WV3 maneuver caused shift | `wv3_maneuver_analysis.py` | Maneuver NOT the cause; natural ~37h period skips Dec 18 |
@@ -21,11 +20,9 @@ On December 18, 2025, Maxar's WorldView-3 satellite reportedly captured an image
 
 ## Resolved Analysis Gaps
 
-1. **Starlink position checked** (Gap 1): `scan_alaska.py` now checks BOTH scenarios - when WV3 is over Alaska AND when Starlink is over Alaska. Neither produces a distance close to 241 km on Dec 18.
+1. **Starlink position checked**: `scan_alaska.py` checks BOTH scenarios - when WV3 is over Alaska AND when Starlink is over Alaska. Neither produces a distance close to 241 km on Dec 18.
 
-2. **Dec 15-19 fully analyzed** (Gap 3): `scan_dec17.py` now scans Dec 15-19, revealing a ~37.2 hour synodic period. Close approaches occurred on Dec 15, 17, and 19 - naturally skipping Dec 18.
-
-3. **Causation proven** (Gap 5): `wv3_maneuver_analysis.py` now shows the maneuver changed the synodic period by only 1.3%, which is NOT enough to explain Dec 18 missing a close approach. The natural ~37 hour period inherently skips Dec 18.
+2. **Synodic period analyzed**: `wv3_maneuver_analysis.py` shows close approaches occur every ~37.2 hours (Dec 15, 17, 19) - naturally skipping Dec 18. The WV3 maneuver changed the period by only 1.3%, NOT enough to cause the gap.
 
 ## Remaining Gaps
 
