@@ -9,14 +9,16 @@ Analyzes how orbital parameters affect the distance envelope pattern:
 
 Usage:
     uv run python python/envelope_analysis.py
+    uv run python python/envelope_analysis.py --force-fetch  # Refresh TLE cache
 """
 
+import argparse
 import json
 import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 import sys
 
 import numpy as np
@@ -25,8 +27,10 @@ from sgp4.api import Satrec, jday
 # Constants
 EARTH_RADIUS_KM = 6378.137
 MU = 398600.4418  # km^3/s^2
+TLE_CACHE_MAX_AGE_HOURS = 24
 
 PROJECT_ROOT = Path(__file__).parent.parent
+TLE_CACHE_FILE = PROJECT_ROOT / "public" / "data" / "output" / "tle_cache.json"
 
 
 @dataclass
@@ -300,8 +304,8 @@ def analyze_envelope(
     )
 
 
-def fetch_tle_from_celestrak(norad_id: int) -> Optional[OrbitalElements]:
-    """Fetch current TLE from Celestrak."""
+def fetch_tle_from_celestrak(norad_id: int) -> Optional[Tuple[str, str, str]]:
+    """Fetch current TLE from Celestrak. Returns (name, line1, line2) or None."""
     import urllib.request
 
     url = f"https://celestrak.org/NORAD/elements/gp.php?CATNR={norad_id}&FORMAT=tle"
@@ -324,9 +328,66 @@ def fetch_tle_from_celestrak(norad_id: int) -> Optional[OrbitalElements]:
                     line2 = line
 
             if line1 and line2:
-                return parse_tle(line1, line2, name)
+                return (name, line1, line2)
     except Exception as e:
         print(f"Error fetching TLE for {norad_id}: {e}", file=sys.stderr)
+
+    return None
+
+
+def load_tle_cache() -> Dict:
+    """Load TLE cache from disk."""
+    if TLE_CACHE_FILE.exists():
+        try:
+            with open(TLE_CACHE_FILE, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {}
+
+
+def save_tle_cache(cache: Dict):
+    """Save TLE cache to disk."""
+    TLE_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(TLE_CACHE_FILE, 'w') as f:
+        json.dump(cache, f, indent=2)
+
+
+def is_cache_fresh(cached_entry: Dict) -> bool:
+    """Check if cached TLE is still fresh (less than TLE_CACHE_MAX_AGE_HOURS old)."""
+    if 'fetched_at' not in cached_entry:
+        return False
+    fetched_at = datetime.fromisoformat(cached_entry['fetched_at'])
+    age = datetime.now(timezone.utc) - fetched_at
+    return age.total_seconds() < TLE_CACHE_MAX_AGE_HOURS * 3600
+
+
+def get_tle(norad_id: int, cache: Dict, force_fetch: bool = False) -> Optional[OrbitalElements]:
+    """Get TLE from cache or fetch from Celestrak if needed."""
+    cache_key = str(norad_id)
+
+    # Check cache first (unless force fetch)
+    if not force_fetch and cache_key in cache and is_cache_fresh(cache[cache_key]):
+        entry = cache[cache_key]
+        return parse_tle(entry['line1'], entry['line2'], entry.get('name', ''))
+
+    # Fetch from Celestrak
+    result = fetch_tle_from_celestrak(norad_id)
+    if result:
+        name, line1, line2 = result
+        cache[cache_key] = {
+            'name': name,
+            'line1': line1,
+            'line2': line2,
+            'fetched_at': datetime.now(timezone.utc).isoformat()
+        }
+        return parse_tle(line1, line2, name)
+
+    # Fall back to stale cache if fetch failed
+    if cache_key in cache:
+        entry = cache[cache_key]
+        print(f"Using stale cache for {norad_id}", file=sys.stderr)
+        return parse_tle(entry['line1'], entry['line2'], entry.get('name', ''))
 
     return None
 
@@ -401,8 +462,12 @@ def load_satellite_pairs() -> List[Tuple[int, int, str]]:
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Distance envelope analysis for satellite pairs')
+    parser.add_argument('--force-fetch', '-f', action='store_true',
+                        help='Force fetch TLEs from Celestrak (ignore cache)')
+    args = parser.parse_args()
+
     print("Distance Envelope Analysis", file=sys.stderr)
-    print("Fetching TLEs from Celestrak...", file=sys.stderr)
 
     # Load pairs from config
     satellite_pairs = load_satellite_pairs()
@@ -413,14 +478,33 @@ def main():
         all_ids.add(id_a)
         all_ids.add(id_b)
 
-    # Fetch TLEs
+    # Load TLE cache
+    cache = load_tle_cache()
+    cache_hits = 0
+    fetch_count = 0
+
+    # Get TLEs (from cache or Celestrak)
     satellites = {}
     for norad_id in sorted(all_ids):
-        sat = fetch_tle_from_celestrak(norad_id)
+        cache_key = str(norad_id)
+        had_fresh_cache = cache_key in cache and is_cache_fresh(cache[cache_key])
+
+        sat = get_tle(norad_id, cache, force_fetch=args.force_fetch)
         if sat:
             satellites[norad_id] = sat
+            if had_fresh_cache and not args.force_fetch:
+                cache_hits += 1
+            else:
+                fetch_count += 1
 
-    print(f"Fetched {len(satellites)}/{len(all_ids)} TLEs, analyzing...", file=sys.stderr)
+    # Save updated cache
+    save_tle_cache(cache)
+
+    if args.force_fetch:
+        print(f"Fetched {fetch_count} TLEs from Celestrak", file=sys.stderr)
+    else:
+        print(f"TLEs: {cache_hits} cached, {fetch_count} fetched", file=sys.stderr)
+    print(f"Analyzing {len(satellite_pairs)} pairs...", file=sys.stderr)
 
     # Analyze each pair
     results = []
