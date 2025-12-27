@@ -27,6 +27,7 @@ from sgp4.api import Satrec, jday
 # Constants
 EARTH_RADIUS_KM = 6378.137
 MU = 398600.4418  # km^3/s^2
+J2 = 1.08263e-3   # Earth's J2 coefficient
 TLE_CACHE_MAX_AGE_HOURS = 24
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -84,6 +85,35 @@ class EnvelopeResult:
     delta_raan: float
     relative_velocity_range: Tuple[float, float]  # min, max km/s
 
+
+# --- Theoretical calculations ---
+
+def synodic_period_hours(period_a_min: float, period_b_min: float) -> float:
+    """
+    Synodic period - time for one satellite to lap the other.
+    This is the theoretical envelope period for satellites in similar orbital planes.
+    """
+    if abs(period_a_min - period_b_min) < 0.001:
+        return float('inf')
+    synodic_min = abs(period_a_min * period_b_min / (period_a_min - period_b_min))
+    return synodic_min / 60  # hours
+
+
+def raan_precession_deg_day(altitude_km: float, inclination_deg: float) -> float:
+    """RAAN precession rate due to J2 in degrees/day."""
+    a = EARTH_RADIUS_KM + altitude_km
+    n = math.sqrt(MU / a**3)  # mean motion rad/s
+    i = math.radians(inclination_deg)
+    raan_rate_rad_s = -1.5 * J2 * (EARTH_RADIUS_KM / a)**2 * n * math.cos(i)
+    return math.degrees(raan_rate_rad_s) * 86400
+
+
+def theoretical_envelope_period(sat_a: 'OrbitalElements', sat_b: 'OrbitalElements') -> float:
+    """Calculate theoretical envelope period based on synodic period."""
+    return synodic_period_hours(sat_a.period_min, sat_b.period_min)
+
+
+# --- TLE parsing ---
 
 def parse_tle(line1: str, line2: str, name: str = "") -> OrbitalElements:
     """Parse TLE lines into orbital elements."""
@@ -528,14 +558,16 @@ def main():
 
     # Print single summary table
     col1 = 55  # Pair description column width
-    print(f"{'Pair':<{col1}}  {'Δ Alt':>7}  {'Δ Inc':>6}  {'Δ RAAN':>6}  {'Approach':>8}  {'Envelope':>8}  {'Min':>6}  {'Max':>6}  {'Count':>5}")
-    print(f"{'':<{col1}}  {'(km)':>7}  {'(°)':>6}  {'(°)':>6}  {'(hrs)':>8}  {'(hrs)':>8}  {'(km)':>6}  {'(km)':>6}  {'':>5}")
-    print("-" * (col1 + 75))
+    print(f"{'Pair':<{col1}}  {'Δ Alt':>6}  {'Δ Inc':>5}  {'Envelope':>8}  {'Theory':>7}  {'Min':>6}  {'Max':>6}  {'Count':>5}")
+    print(f"{'':<{col1}}  {'(km)':>6}  {'(°)':>5}  {'(hrs)':>8}  {'(hrs)':>7}  {'(km)':>6}  {'(km)':>6}  {'':>5}")
+    print("-" * (col1 + 60))
 
     for desc, r in results:
         env_period = f"{r.mean_envelope_period:.1f}" if r.envelope_periods else "N/A"
-        print(f"{desc:<{col1}}  {r.delta_altitude:>7.0f}  {r.delta_inclination:>6.1f}  "
-              f"{r.delta_raan:>6.1f}  {r.mean_approach_period:>8.2f}  {env_period:>8}  "
+        theory = theoretical_envelope_period(r.sat_a, r.sat_b)
+        theory_str = f"{theory:.1f}" if theory < 10000 else "N/A"
+        print(f"{desc:<{col1}}  {r.delta_altitude:>6.0f}  {r.delta_inclination:>5.1f}  "
+              f"{env_period:>8}  {theory_str:>7}  "
               f"{r.min_distance:>6.0f}  {r.max_min_distance:>6.0f}  {len(r.minima_times):>5}")
 
     print(f"\nJSON saved to: {output_dir}", file=sys.stderr)

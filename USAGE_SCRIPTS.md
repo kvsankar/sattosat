@@ -10,12 +10,11 @@ For UI documentation, see [USAGE_UI.md](USAGE_UI.md).
 2. [Find Conjunctions Using a Profile](#find-conjunctions-using-a-profile)
 3. [Find Conjunctions Using Custom TLEs](#find-conjunctions-using-custom-tles)
 4. [Compare Python vs TypeScript Results](#compare-python-vs-typescript-results)
-5. [Analyze Envelope Periods (Empirical)](#analyze-envelope-periods-empirical)
-6. [Calculate Envelope Periods (Theoretical)](#calculate-envelope-periods-theoretical)
-7. [Investigate a Specific Conjunction Event](#investigate-a-specific-conjunction-event)
-8. [Fetch Historical TLEs](#fetch-historical-tles)
-9. [Compare TLE Sources](#compare-tle-sources)
-10. [Capture Screenshots](#capture-screenshots)
+5. [Analyze Envelope Periods](#analyze-envelope-periods-empirical)
+6. [Investigate a Specific Conjunction Event](#investigate-a-specific-conjunction-event)
+7. [Fetch Historical TLEs](#fetch-historical-tles)
+8. [Compare TLE Sources](#compare-tle-sources)
+9. [Capture Screenshots](#capture-screenshots)
 
 ---
 
@@ -191,14 +190,18 @@ uv run python scripts/compare-conjunctions.py --norad-a 40115 --norad-b 66620 --
 
 ---
 
-## Analyze Envelope Periods (Empirical)
+## Analyze Envelope Periods
 
 <a id="analyze-envelope-periods-empirical"></a>
 
-The "envelope period" is the time between successive closest approaches. Analyze this pattern empirically from actual orbital data.
+The "envelope period" is the time between successive closest approaches. This script analyzes envelope patterns both empirically (via SGP4 propagation) and theoretically (via synodic period formula).
 
 ```bash
+# Use cached TLEs (fetches if cache is stale or missing)
 uv run python python/envelope_analysis.py
+
+# Force refresh TLEs from Celestrak
+uv run python python/envelope_analysis.py --force-fetch
 ```
 
 **Script:** `python/envelope_analysis.py`
@@ -216,34 +219,18 @@ Pairs are configured in `python/satellite_pairs.json`:
 
 ### Output
 
-JSON files in `public/data/output/envelope_analysis/` containing:
-- Orbital elements for both satellites
-- Local minima (approach times and distances)
-- Envelope periods between successive closest approaches
-
----
-
-## Calculate Envelope Periods (Theoretical)
-
-<a id="calculate-envelope-periods-theoretical"></a>
-
-Calculate expected envelope periods from orbital mechanics theory.
-
-```bash
-uv run python python/envelope_theory.py
-```
-
-**Script:** `python/envelope_theory.py`
+- **Console:** Summary table with empirical envelope period, theoretical (synodic) period, min/max distances
+- **JSON:** Files in `public/data/output/envelope_analysis/` with orbital elements, approach times, and envelope periods
 
 ### Theory
 
-The envelope period follows the synodic period formula:
+The theoretical envelope period follows the synodic period formula:
 
 ```
 T_envelope = (T_a × T_b) / |T_a - T_b|
 ```
 
-Where T_a and T_b are the orbital periods. The script also accounts for J2 precession effects on RAAN.
+Where T_a and T_b are the orbital periods. This approximation works well for satellites in similar orbital planes.
 
 See the [blog post](https://blog.sankara.net/posts/starlink-photo-investigation/) for detailed explanation.
 
