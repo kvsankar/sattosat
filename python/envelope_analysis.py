@@ -9,7 +9,8 @@ Analyzes how orbital parameters affect the distance envelope pattern:
 
 Usage:
     uv run python python/envelope_analysis.py
-    uv run python python/envelope_analysis.py --force-fetch  # Refresh TLE cache
+    uv run python python/envelope_analysis.py --force-fetch      # Refresh TLE cache
+    uv run python python/envelope_analysis.py --config my.json   # Custom pairs file
 """
 
 import argparse
@@ -479,9 +480,11 @@ def save_envelope_data(result: EnvelopeResult, output_path: Path):
         json.dump(data, f, indent=2)
 
 
-def load_satellite_pairs() -> List[Tuple[int, int, str]]:
+def load_satellite_pairs(config_path: Optional[Path] = None) -> List[Tuple[int, int, str]]:
     """Load satellite pairs from config file."""
-    config_path = Path(__file__).parent / "satellite_pairs.json"
+    if config_path is None:
+        config_path = Path(__file__).parent / "satellite_pairs.json"
+
     with open(config_path, 'r') as f:
         config = json.load(f)
 
@@ -495,12 +498,14 @@ def main():
     parser = argparse.ArgumentParser(description='Distance envelope analysis for satellite pairs')
     parser.add_argument('--force-fetch', '-f', action='store_true',
                         help='Force fetch TLEs from Celestrak (ignore cache)')
+    parser.add_argument('--config', '-c', type=Path,
+                        help='Path to satellite pairs JSON file (default: python/satellite_pairs.json)')
     args = parser.parse_args()
 
     print("Distance Envelope Analysis", file=sys.stderr)
 
     # Load pairs from config
-    satellite_pairs = load_satellite_pairs()
+    satellite_pairs = load_satellite_pairs(args.config)
 
     # Collect all unique NORAD IDs
     all_ids = set()
