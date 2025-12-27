@@ -36,6 +36,19 @@ STEP_SECONDS = 30.0
 THRESHOLD_KM = 1000.0
 REFINE_PRECISION_MS = 100
 
+# Region definitions for --region filtering
+REGIONS = {
+    "alaska": {
+        "name": "Alaska",
+        "check": lambda lon, lat: (
+            # Mainland Alaska + eastern Aleutians
+            (-180 <= lon <= -125 and 45 <= lat <= 75) or
+            # Western Aleutians (past the date line)
+            (165 <= lon <= 180 and 50 <= lat <= 56)
+        )
+    }
+}
+
 # Data paths
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_INPUT = PROJECT_ROOT / "public" / "data" / "input"
@@ -258,6 +271,68 @@ def find_conjunctions(
     return sorted(conjunctions, key=lambda c: c['distance'])
 
 
+def find_region_conjunctions(
+    tles_a: List[TLERecord],
+    tles_b: List[TLERecord],
+    start_time: datetime,
+    end_time: datetime,
+    region: str,
+    step_seconds: float = STEP_SECONDS,
+    threshold_km: float = THRESHOLD_KM
+) -> List[dict]:
+    """Find closest approach while either satellite is over a region."""
+    region_check = REGIONS[region]["check"]
+    region_name = REGIONS[region]["name"]
+
+    # Track samples for each satellite being in region
+    samples_a_in_region = []
+    samples_b_in_region = []
+
+    current = start_time
+    while current <= end_time:
+        tle_a = pick_closest_tle(tles_a, current)
+        tle_b = pick_closest_tle(tles_b, current)
+
+        try:
+            pos_a, _ = propagate(tle_a.satrec, current)
+            pos_b, _ = propagate(tle_b.satrec, current)
+            dist = distance_km(pos_a, pos_b)
+            lat_a, lon_a, _ = eci_to_geodetic(pos_a, current)
+            lat_b, lon_b, _ = eci_to_geodetic(pos_b, current)
+
+            if dist < threshold_km:
+                sample = {
+                    'time': current,
+                    'distance': dist,
+                    'sat_a_lat': lat_a,
+                    'sat_a_lon': lon_a,
+                    'sat_b_lat': lat_b,
+                    'sat_b_lon': lon_b,
+                }
+                if region_check(lon_a, lat_a):
+                    samples_a_in_region.append({**sample, 'region_sat': 'A'})
+                if region_check(lon_b, lat_b):
+                    samples_b_in_region.append({**sample, 'region_sat': 'B'})
+
+        except ValueError:
+            pass
+
+        current += timedelta(seconds=step_seconds)
+
+    # Find minimum for each satellite
+    results = []
+    if samples_a_in_region:
+        best_a = min(samples_a_in_region, key=lambda x: x['distance'])
+        best_a['region_note'] = f"Sat A over {region_name}"
+        results.append(best_a)
+    if samples_b_in_region:
+        best_b = min(samples_b_in_region, key=lambda x: x['distance'])
+        best_b['region_note'] = f"Sat B over {region_name}"
+        results.append(best_b)
+
+    return sorted(results, key=lambda c: c['distance'])
+
+
 def load_profile(name: str) -> dict:
     """Load profile from profiles.json."""
     profiles_path = DATA_INPUT / "profiles.json"
@@ -290,7 +365,7 @@ def write_csv(conjunctions: List[dict], output_path: Path):
             writer.writerow([
                 c['time'].strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z',
                 f"{c['distance']:.6f}",
-                f"{c['relative_velocity']:.6f}",
+                f"{c.get('relative_velocity', 0):.6f}",
                 f"{c['sat_a_lat']:.6f}",
                 f"{c['sat_a_lon']:.6f}",
                 f"{c['sat_b_lat']:.6f}",
@@ -402,6 +477,8 @@ def main():
     parser.add_argument('--report', '-r', action='store_true',
                         help='Generate detailed report (.txt) alongside CSV')
     parser.add_argument('--description', '-d', help='Description to include in report')
+    parser.add_argument('--region', choices=list(REGIONS.keys()),
+                        help='Filter by region (finds closest while satellite is over region)')
     parser.add_argument('--quiet', '-q', action='store_true', help='Suppress progress output')
 
     args = parser.parse_args()
@@ -454,14 +531,24 @@ def main():
         print(f"Loaded {len(tles_a)} TLEs for Sat A")
         print(f"Loaded {len(tles_b)} TLEs for Sat B")
         print(f"Search window: {start_time.isoformat()} to {end_time.isoformat()}")
+        if args.region:
+            print(f"Region filter: {REGIONS[args.region]['name']}")
         print(f"Finding conjunctions < {args.threshold} km...")
 
     # Find conjunctions
-    conjunctions = find_conjunctions(
-        tles_a, tles_b,
-        start_time, end_time,
-        threshold_km=args.threshold
-    )
+    if args.region:
+        conjunctions = find_region_conjunctions(
+            tles_a, tles_b,
+            start_time, end_time,
+            region=args.region,
+            threshold_km=args.threshold
+        )
+    else:
+        conjunctions = find_conjunctions(
+            tles_a, tles_b,
+            start_time, end_time,
+            threshold_km=args.threshold
+        )
 
     if not args.quiet:
         print(f"Found {len(conjunctions)} conjunctions")
@@ -492,9 +579,11 @@ def main():
     if not args.quiet and conjunctions:
         print(f"\nClosest approach:")
         c = conjunctions[0]
-        print(f"  Time: {c['time'].strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} UTC")
+        region_note = f" [{c['region_note']}]" if 'region_note' in c else ""
+        print(f"  Time: {c['time'].strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} UTC{region_note}")
         print(f"  Distance: {c['distance']:.2f} km")
-        print(f"  Relative velocity: {c['relative_velocity']:.2f} km/s")
+        if 'relative_velocity' in c:
+            print(f"  Relative velocity: {c['relative_velocity']:.2f} km/s")
 
 
 if __name__ == "__main__":

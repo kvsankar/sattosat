@@ -1,266 +1,20 @@
 # Starlink-35956 Imaging Event Investigation
 
-This directory contains scripts developed to investigate the WorldView-3 / Starlink-35956 imaging event of December 18, 2025.
-
-For general-purpose analysis scripts, see [USAGE_SCRIPTS.md](../../USAGE_SCRIPTS.md).
-
-## Background
-
-On December 18, 2025, Maxar's WorldView-3 satellite reportedly captured an image of Starlink-35956 at 241 km distance over Alaska. Our SatToSat conjunction finder (anchored at Dec 19 01:30 UTC) calculated the closest approach at 350.4 km. These scripts investigate this discrepancy.
+On December 18, 2025, Maxar's WorldView-3 satellite reportedly captured an image of Starlink-35956 at 241 km distance over Alaska. This investigation attempts to reproduce that geometry using public TLE data.
 
 ## Investigation Goals
 
-| Goal | Script | Finding |
-|------|--------|---------|
-| Reproduce the 241 km distance | `verify_conjunction.py` | • **Dec 17 12:18:59 UTC: 204.2 km** at 52.9°N, 16.9°W (Atlantic Ocean)<br>• Dec 18: No approach <500 km; closest was 983 km at 23:55 UTC<br>• Dec 19 00:42:53 UTC: 383.1 km at 51.0°S, 23.6°W (South Atlantic)<br>• Dec 19 01:30:19 UTC: 350.4 km at 54.8°N, 146.0°E (Sea of Okhotsk) |
-| Confirm Alaska as location | `scan_alaska.py` | • WV3 over Alaska: Dec 18 23:54:30 UTC, 1156.7 km, WV3 at 50.3°N, 168.3°E (western Aleutians)<br>• Starlink over Alaska: Dec 18 23:56:20 UTC, 1168.0 km, Starlink at 53.2°N, 165.0°E (western Aleutians) |
-| Check if post-anomaly TLE explains it | `backpropagate_dec19.py` | Using Starlink TLE epoch 2025-12-19 22:47:58 UTC (n=15.452, decayed) back-propagated to Dec 18:<br>• Dec 18 23:55:00 UTC: 661.6 km, WV3 at 48.5°N, 167.6°E, Starlink at 53.3°N, 164.0°E (western Aleutians)<br>• No times found with distance ~241 km<br>• For comparison, normal Dec 18 TLE (n=15.493) gives 976.8 km at same time |
+| Goal | Command | Finding |
+|------|---------|---------|
+| Reproduce the 241 km distance | `python conjunctions.py --tle-a ../src/lib/embedded/40115.tle --tle-b ../src/lib/embedded/66620.tle --anchor 2025-12-18T12:00:00Z --threshold 500` | • **Dec 17 12:18:59 UTC: 204.2 km** at 52.9°N, 16.9°W (Atlantic Ocean)<br>• Dec 18: No approach <500 km; closest was 983 km at 23:55 UTC<br>• Dec 19 01:30:19 UTC: 350.4 km at 54.8°N, 146.0°E (Sea of Okhotsk) |
+| Confirm Alaska as location | `python conjunctions.py --tle-a ../src/lib/embedded/40115.tle --tle-b ../src/lib/embedded/66620.tle --anchor 2025-12-18T12:00:00Z --threshold 2000 --region alaska` | • Dec 15 23:08 UTC: 247.7 km (Sat A over Alaska, near date line)<br>• Dec 18 closest over Alaska: ~1157 km at 23:54 UTC (western Aleutians) |
+| Check if post-anomaly TLE explains it | `python conjunctions.py --tle-a ../src/lib/embedded/40115.tle --tle-b investigation/starlink_dec19_postanomaly.tle --anchor 2025-12-18T12:00:00Z --threshold 1000` | Using Starlink TLE epoch 2025-12-19 22:47:58 UTC (n=15.452, decayed):<br>• Dec 18 23:54 UTC: ~650 km (western Aleutians)<br>• No times found with distance ~241 km |
 
 ## Remaining Gaps
 
-1. **Line-of-sight vs center-to-center**: Our 204 km is center-to-center distance. The reported 241 km could use a different measure (slant range, etc.).
+1. **Line-of-sight vs center-to-center**: Our 204 km is center-to-center distance. The reported 241 km could use a different measure.
 
 2. **Date discrepancy unexplained**: We found 204 km on Dec 17, but the report says Dec 18. No scenario produces 241 km on Dec 18 using public TLE data.
-
----
-
-## Scripts
-
-### 1. verify_conjunction.py
-
-**Intent:** Comprehensive verification of the WV3/Starlink-35956 conjunction. Tests multiple TLE epochs, searches for times matching the reported 241 km distance, and compares pre-anomaly vs post-anomaly TLEs.
-
-**Command:**
-```bash
-uv run python python/investigation/verify_conjunction.py
-```
-
-**Results:**
-```
-======================================================================
-WorldView-3 / Starlink-35956 Conjunction Verification
-======================================================================
-
-Loaded 10 WorldView-3 TLEs
-Loaded 12 Starlink-35956 TLEs
-
-Starlink-35956 TLE epochs and mean motion:
---------------------------------------------------
-  2025-12-15 08:00 UTC - 15.49266 rev/day
-  2025-12-15 22:00 UTC - 15.49257 rev/day
-  2025-12-16 06:00 UTC - 15.49279 rev/day
-  2025-12-16 21:59 UTC - 15.49332 rev/day
-  2025-12-17 02:38 UTC - 15.49318 rev/day
-  2025-12-17 15:01 UTC - 15.49325 rev/day
-  2025-12-17 21:13 UTC - 15.49335 rev/day
-  2025-12-18 06:30 UTC - 15.49329 rev/day
-  2025-12-18 14:15 UTC - 15.49351 rev/day
-  2025-12-18 20:26 UTC - 15.49341 rev/day
-  2025-12-19 22:47 UTC - 15.45204 rev/day
-  2025-12-21 23:02 UTC - 15.39672 rev/day
-
-Search window: 2025-12-17 00:00 to 2025-12-19 23:59 UTC
-
-======================================================================
-TEST 1: Finding all close approaches (< 500 km)
-======================================================================
-
-Found 3 close approaches:
-
- 1. 204.2 km at 2025-12-17 12:18:59 UTC
-    Relative velocity: 11.93 km/s
-    WorldView-3: 52.9°N, 16.9°W, 618 km
-    Starlink:    53.3°N, 17.5°W, 424 km
-    TLE epochs - WV3: 12-17 14:58, Starlink: 12-17 15:01 (n=15.4932)
-
- 2. 350.4 km at 2025-12-19 01:30:19 UTC
-    Relative velocity: 11.32 km/s
-    WorldView-3: 54.8°N, 146.0°E, 623 km
-    Starlink:    52.7°N, 148.2°E, 424 km
-    TLE epochs - WV3: 12-18 21:42, Starlink: 12-18 20:26 (n=15.4934)
-
- 3. 383.1 km at 2025-12-19 00:42:53 UTC
-    Relative velocity: 11.31 km/s
-    WorldView-3: 51.0°S, 23.6°W, 636 km
-    Starlink:    53.2°S, 26.2°W, 438 km
-    TLE epochs - WV3: 12-18 21:42, Starlink: 12-18 20:26 (n=15.4934)
-
-======================================================================
-TEST 2: Searching for times when distance ≈ 241 km
-======================================================================
-
-Found 2 times when distance was 231-251 km:
-
-  235.0 km at 2025-12-17 12:18:50 UTC
-    WorldView-3: 53.5°N, 16.7°W, 618 km
-    Starlink:    53.3°N, 18.5°W, 424 km
-  238.0 km at 2025-12-17 12:19:10 UTC
-    WorldView-3: 52.3°N, 17.2°W, 618 km
-    Starlink:    53.3°N, 16.4°W, 424 km
-
-======================================================================
-TEST 3: Using post-anomaly Starlink TLE (Dec 19, n=15.452)
-======================================================================
-
-Using Starlink TLE from 2025-12-19 22:47 UTC
-Mean motion: 15.45204 rev/day (decayed)
-
-No close approaches found using post-anomaly TLE.
-
-======================================================================
-SUMMARY
-======================================================================
-
-Reported: 241 km over Alaska on Dec 18, 2025
-
-Calculated closest approach:
-  Distance: 204.2 km
-  Time: 2025-12-17 12:18:59 UTC
-  WorldView-3: 52.9°N, 16.9°W, 618 km
-  Starlink: 53.3°N, 17.5°W, 424 km
-
-Discrepancy: -36.8 km
-```
-
-**Finding:** The closest approach matching ~241 km occurred on Dec 17 (not Dec 18) over the Atlantic Ocean (not Alaska). The Dec 18 approaches were all >900 km when WV3 was over Alaska. This suggests either different TLE data was used for the reported distance, or the imaging geometry differs from a simple closest-approach calculation.
-
----
-
-### 2. scan_alaska.py
-
-**Intent:** Find all passes over Alaska on Dec 18, 2025, checking BOTH scenarios: when WV3 is over Alaska AND when Starlink is over Alaska. Includes the full Aleutian chain (extending past the International Date Line to ~173°E).
-
-**Command:**
-```bash
-uv run python python/investigation/scan_alaska.py
-```
-
-**Results:**
-```
-======================================================================
-Scanning Dec 18, 2025 for Alaska imaging geometry
-======================================================================
-
-Scanning 2025-12-18 at 10-second intervals...
-
-======================================================================
-SCENARIO 1: WorldView-3 over Alaska (imaging outward)
-======================================================================
-
-Found 246 samples, 7 distinct passes
-
-Pass 7: 23:47:30 - 23:54:30 UTC (7.0 min)
-  Min distance: 1156.7 km at 23:54:30 UTC
-  WV3: 50.3°N, 168.3°E, 622 km  (western Aleutians)
-  Starlink: 53.1°N, 153.7°E, 424 km
-
-CLOSEST while WV3 over Alaska: 1156.7 km at 23:54:30 UTC
-
-======================================================================
-SCENARIO 2: Starlink over Alaska (WV3 imaging toward Alaska)
-======================================================================
-
-Found 245 samples, 6 distinct passes
-
-Pass 6: 23:56:20 - 23:59:50 UTC (3.5 min)
-  Min distance: 1168.0 km at 23:56:20 UTC
-  Starlink: 53.2°N, 165.0°E, 424 km  (western Aleutians)
-  WV3: 43.7°N, 165.8°E, 620 km
-
-CLOSEST while Starlink over Alaska: 1168.0 km at 23:56:20 UTC
-
-======================================================================
-SUMMARY
-======================================================================
-Closest approach with WV3 over Alaska:      1156.7 km
-Closest approach with Starlink over Alaska: 1168.0 km
-Reported imaging distance:                  241 km
-
-CONCLUSION: Neither scenario produces a distance close to 241 km on Dec 18.
-======================================================================
-```
-
-**Finding:** Both satellites passed over the western Aleutians around 23:54-23:56 UTC on Dec 18 with a distance of ~1160 km. This is the closest Dec 18 approach over Alaska, but still ~5x larger than the reported 241 km.
-
----
-
-### 3. backpropagate_dec19.py
-
-**Intent:** Test whether the Dec 19 (post-anomaly) TLE for Starlink-35956 can back-predict the Dec 18 imaging conditions. This checks if Starlink was already in an anomalous orbit during the imaging event.
-
-**Command:**
-```bash
-uv run python python/investigation/backpropagate_dec19.py
-```
-
-**Results:**
-```
-======================================================================
-Back-propagating Dec 19 TLE to Dec 18
-======================================================================
-
-Dec 19 TLE epoch: 2025-12-19 22:47:58 UTC
-Dec 19 TLE mean motion: 15.45204 rev/day (DECAYED)
-
-Dec 18 TLE epochs (normal orbit):
-  2025-12-18 06:30:37 UTC - n=15.49329
-  2025-12-18 14:15:04 UTC - n=15.49351
-  2025-12-18 20:26:38 UTC - n=15.49341
-
-======================================================================
-TEST 1: Close approaches on Dec 18 using Dec 19 TLE (back-propagated)
-======================================================================
-
-Found 1 close approaches:
-
- 1. 661.6 km at 23:55:00 UTC
-    WV3: 48.5°, 167.6°, 621 km
-    SL:  53.3°, 164.0°, 434 km
-
-======================================================================
-TEST 2: Close approaches on Dec 18 using Dec 18 TLEs (normal)
-======================================================================
-
-Found 1 close approaches:
-
- 1. 976.8 km at 23:55:30 UTC
-    WV3: 46.7°, 166.9°, 621 km
-
-======================================================================
-TEST 3: Scanning for ~241 km distance using Dec 19 TLE
-======================================================================
-
-No times found with distance ~241 km
-
-======================================================================
-SUMMARY
-======================================================================
-
-Reported: 241 km over Alaska on Dec 18
-
-Dec 19 TLE (back-propagated): 661.6 km at 23:55:00 UTC
-  Location: 48.5°, 167.6°
-Dec 18 TLE (normal orbit):    976.8 km at 23:55:30 UTC
-  Location: 46.7°, 166.9°
-```
-
-**Finding:** Back-propagating the post-anomaly TLE gives a closer approach (661 km vs 977 km) but still nowhere near 241 km. The anomalous TLE cannot explain the reported imaging distance, even with back-propagation.
-
----
-
-## Supporting Files
-
-- `wv3_pairs.json` - Satellite pair configurations for WV3-specific envelope analysis
-
-## Summary of Investigation
-
-| Question | Answer |
-|----------|--------|
-| Was the 241 km approach on Dec 18? | No - closest was 983 km on Dec 18 |
-| When was the ~241 km approach? | Dec 17 12:19 UTC (204 km) - wrong date |
-| Was it over Alaska? | No - over Atlantic Ocean (~17°W) - wrong location |
-| What if Starlink was over Alaska? | Checked - minimum 1168 km on Dec 18 (western Aleutians) |
-| Can post-anomaly TLE explain it? | No - still gives >600 km |
 
 ## Conclusion
 
@@ -269,11 +23,35 @@ The reported 241 km imaging distance over Alaska on Dec 18 **cannot be reproduce
 **What we found:**
 - Closest approach: 204 km on Dec 17 12:19 UTC over the Atlantic Ocean
 - Dec 18 had no close approach <500 km (closest was 983 km)
-- Best Alaska geometry on Dec 18: ~1160 km over western Aleutians at 23:54 UTC
+- Best Alaska geometry on Dec 18: ~1157 km over western Aleutians at 23:54 UTC
 
 **Possible explanations for the discrepancy:**
 - Proprietary ephemeris data (not public TLEs)
 - Different distance calculation method (slant range vs center-to-center)
 - The 204 km approach on Dec 17 over the Atlantic is the closest match to 241 km
 
-**Investigation status:** All identified gaps have been addressed. The discrepancy between the reported event (241 km, Dec 18, Alaska) and public TLE data remains unexplained.
+---
+
+## Tool Usage
+
+All investigations use `conjunctions.py` in the parent `python/` directory:
+
+```bash
+cd python
+
+# Find all close approaches (default threshold: 1000 km, search window: ±3 days from anchor)
+python conjunctions.py --tle-a ../src/lib/embedded/40115.tle --tle-b ../src/lib/embedded/66620.tle --anchor 2025-12-18T12:00:00Z
+
+# With custom threshold
+python conjunctions.py --tle-a ../src/lib/embedded/40115.tle --tle-b ../src/lib/embedded/66620.tle --anchor 2025-12-18T12:00:00Z --threshold 500
+
+# Filter by region (finds closest while satellite is over region)
+python conjunctions.py --tle-a ../src/lib/embedded/40115.tle --tle-b ../src/lib/embedded/66620.tle --anchor 2025-12-18T12:00:00Z --threshold 2000 --region alaska
+
+# Use custom TLE file for satellite B
+python conjunctions.py --tle-a ../src/lib/embedded/40115.tle --tle-b investigation/starlink_dec19_postanomaly.tle --anchor 2025-12-18T12:00:00Z
+```
+
+## Files
+
+- `starlink_dec19_postanomaly.tle` - Post-anomaly TLE for Starlink-35956 (epoch 2025-12-19 22:47:58 UTC, n=15.452)
