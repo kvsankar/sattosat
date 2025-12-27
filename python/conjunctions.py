@@ -50,6 +50,7 @@ class TLERecord:
     epoch: datetime
     satrec: Satrec
     mean_motion: float
+    norad_id: int
 
     @classmethod
     def from_lines(cls, line1: str, line2: str) -> "TLERecord":
@@ -61,7 +62,8 @@ class TLERecord:
         day_of_year = float(epoch_str[2:])
         epoch = datetime(year, 1, 1, tzinfo=timezone.utc) + timedelta(days=day_of_year - 1)
         mean_motion = float(line2[52:63])
-        return cls(line1, line2, epoch, satrec, mean_motion)
+        norad_id = int(line1[2:7].strip())
+        return cls(line1, line2, epoch, satrec, mean_motion, norad_id)
 
 
 def load_tle_file(path: Path) -> List[TLERecord]:
@@ -439,7 +441,10 @@ def main():
         tles_a = load_tle_file(args.tle_a)
         tles_b = load_tle_file(args.tle_b)
         anchor = datetime.fromisoformat(args.anchor.replace('Z', '+00:00'))
-        output_name = f"conjunctions-custom-python.csv"
+        # Use NORAD IDs for unique output filename
+        norad_a = tles_a[0].norad_id if tles_a else 0
+        norad_b = tles_b[0].norad_id if tles_b else 0
+        output_name = f"conjunctions-{norad_a}-{norad_b}-python.csv"
 
     # Calculate search window
     start_time = anchor - timedelta(days=SEARCH_RANGE_DAYS)

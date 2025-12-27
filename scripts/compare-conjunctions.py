@@ -112,29 +112,47 @@ def compare_conjunctions(
 
 def main():
     parser = argparse.ArgumentParser(description='Compare Python and TypeScript conjunction outputs')
-    parser.add_argument('--profile', '-p', default='WV3-STARLINK35956-Picture',
-                        help='Profile name (default: WV3-STARLINK35956-Picture)')
+    parser.add_argument('--profile', '-p',
+                        help='Profile name (e.g., WV3-STARLINK35956-Picture)')
+    parser.add_argument('--norad-a', type=int,
+                        help='NORAD ID of satellite A (for custom TLE runs)')
+    parser.add_argument('--norad-b', type=int,
+                        help='NORAD ID of satellite B (for custom TLE runs)')
     parser.add_argument('--max-compare', '-n', type=int, default=20,
                         help='Maximum number of conjunctions to compare (default: 20)')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='Show detailed comparison')
     args = parser.parse_args()
 
+    # Determine file identifier
+    if args.profile:
+        file_id = args.profile
+    elif args.norad_a and args.norad_b:
+        file_id = f"{args.norad_a}-{args.norad_b}"
+    else:
+        parser.error("Either --profile or both --norad-a and --norad-b are required")
+
     # Find output files
     project_root = Path(__file__).parent.parent
     output_dir = project_root / 'public' / 'data' / 'output'
 
-    python_csv = output_dir / f'conjunctions-{args.profile}-python.csv'
-    ts_csv = output_dir / f'conjunctions-{args.profile}-typescript.csv'
+    python_csv = output_dir / f'conjunctions-{file_id}-python.csv'
+    ts_csv = output_dir / f'conjunctions-{file_id}-typescript.csv'
 
     if not python_csv.exists():
         print(f"Error: Python output not found: {python_csv}")
-        print("Run: cd python && uv run python conjunctions.py --profile " + args.profile)
+        if args.profile:
+            print(f"Run: uv run python python/conjunctions.py --profile {args.profile}")
+        else:
+            print("Run the Python conjunction script with matching TLE files first")
         sys.exit(1)
 
     if not ts_csv.exists():
         print(f"Error: TypeScript output not found: {ts_csv}")
-        print("Run: npx tsx scripts/conjunctions.ts --profile " + args.profile)
+        if args.profile:
+            print(f"Run: npx tsx scripts/conjunctions.ts --profile {args.profile}")
+        else:
+            print("Run the TypeScript conjunction script with matching TLE files first")
         sys.exit(1)
 
     # Load CSVs
@@ -145,7 +163,10 @@ def main():
     print("Conjunction Output Comparison")
     print("=" * 70)
     print()
-    print(f"Profile: {args.profile}")
+    if args.profile:
+        print(f"Profile: {args.profile}")
+    else:
+        print(f"NORAD IDs: {args.norad_a} vs {args.norad_b}")
     print(f"Python conjunctions: {len(python_conj)}")
     print(f"TypeScript conjunctions: {len(ts_conj)}")
     print()

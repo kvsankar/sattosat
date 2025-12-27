@@ -217,7 +217,10 @@ async function main(): Promise<void> {
     tlesA = parseTleFile(args.tleA!);
     tlesB = parseTleFile(args.tleB!);
     anchor = new Date(args.anchor!);
-    outputName = 'conjunctions-custom-typescript.csv';
+    // Use NORAD IDs for unique output filename
+    const noradA = tlesA[0]?.noradId ?? 0;
+    const noradB = tlesB[0]?.noradId ?? 0;
+    outputName = `conjunctions-${noradA}-${noradB}-typescript.csv`;
   }
 
   // Calculate search window

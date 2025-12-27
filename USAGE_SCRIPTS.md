@@ -151,29 +151,36 @@ uv run python python/conjunctions.py --profile WV3-STARLINK35956-Picture
 npx tsx scripts/conjunctions.ts --profile WV3-STARLINK35956-Picture
 
 # Step 3: Compare
-uv run python scripts/compare-conjunctions.py --verbose
+uv run python scripts/compare-conjunctions.py --profile WV3-STARLINK35956-Picture --verbose
 ```
 
 ### Compare Custom TLE Results
 
 ```bash
-# Step 1: Generate Python output
+# Step 1: Generate Python output (outputs conjunctions-40115-66620-python.csv)
 uv run python python/conjunctions.py \
   --tle-a public/data/input/tles/40115.tle \
   --tle-b public/data/input/tles/66620.tle \
   --anchor 2025-12-19T01:30:19Z
 
-# Step 2: Generate TypeScript output (same args)
+# Step 2: Generate TypeScript output (outputs conjunctions-40115-66620-typescript.csv)
 npx tsx scripts/conjunctions.ts \
   --tle-a public/data/input/tles/40115.tle \
   --tle-b public/data/input/tles/66620.tle \
   --anchor 2025-12-19T01:30:19Z
 
-# Step 3: Compare
-uv run python scripts/compare-conjunctions.py --verbose
+# Step 3: Compare using NORAD IDs
+uv run python scripts/compare-conjunctions.py --norad-a 40115 --norad-b 66620 --verbose
 ```
 
 **Script:** `scripts/compare-conjunctions.py`
+
+### Output File Naming
+
+| Run Type | Python Output | TypeScript Output |
+|----------|---------------|-------------------|
+| Profile | `conjunctions-{profile}-python.csv` | `conjunctions-{profile}-typescript.csv` |
+| Custom TLEs | `conjunctions-{noradA}-{noradB}-python.csv` | `conjunctions-{noradA}-{noradB}-typescript.csv` |
 
 ### What Gets Verified
 
