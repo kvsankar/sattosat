@@ -470,7 +470,9 @@ def main():
     parser.add_argument('--profile', '-p', help='Profile name from profiles.json')
     parser.add_argument('--tle-a', type=Path, help='TLE file for satellite A')
     parser.add_argument('--tle-b', type=Path, help='TLE file for satellite B')
-    parser.add_argument('--anchor', help='Anchor time (ISO format, e.g., 2025-12-19T01:30:19Z)')
+    parser.add_argument('--anchor', help='Anchor time - search ±3 days around this time (ISO format)')
+    parser.add_argument('--start', help='Start time for search window (ISO format, e.g., 2025-12-17T00:00:00Z)')
+    parser.add_argument('--end', help='End time for search window (ISO format, e.g., 2025-12-20T00:00:00Z)')
     parser.add_argument('--output', '-o', type=Path, help='Output CSV path (default: auto-generated)')
     parser.add_argument('--threshold', type=float, default=THRESHOLD_KM,
                         help=f'Maximum distance threshold in km (default: {THRESHOLD_KM})')
@@ -490,8 +492,8 @@ def main():
     if not args.profile and not (args.tle_a and args.tle_b):
         parser.error("Must specify either --profile or both --tle-a and --tle-b")
 
-    if args.tle_a and args.tle_b and not args.anchor:
-        parser.error("--anchor is required when using --tle-a/--tle-b")
+    if args.tle_a and args.tle_b and not args.anchor and not (args.start and args.end):
+        parser.error("--anchor or both --start/--end required when using --tle-a/--tle-b")
 
     # Load TLEs
     if args.profile:
@@ -517,15 +519,19 @@ def main():
     else:
         tles_a = load_tle_file(args.tle_a)
         tles_b = load_tle_file(args.tle_b)
-        anchor = datetime.fromisoformat(args.anchor.replace('Z', '+00:00'))
+        anchor = datetime.fromisoformat(args.anchor.replace('Z', '+00:00')) if args.anchor else None
         # Use NORAD IDs for unique output filename
         norad_a = tles_a[0].norad_id if tles_a else 0
         norad_b = tles_b[0].norad_id if tles_b else 0
         output_name = f"conjunctions-{norad_a}-{norad_b}-python.csv"
 
     # Calculate search window
-    start_time = anchor - timedelta(days=SEARCH_RANGE_DAYS)
-    end_time = anchor + timedelta(days=SEARCH_RANGE_DAYS)
+    if args.start and args.end:
+        start_time = datetime.fromisoformat(args.start.replace('Z', '+00:00'))
+        end_time = datetime.fromisoformat(args.end.replace('Z', '+00:00'))
+    else:
+        start_time = anchor - timedelta(days=SEARCH_RANGE_DAYS)
+        end_time = anchor + timedelta(days=SEARCH_RANGE_DAYS)
 
     if not args.quiet:
         print(f"Loaded {len(tles_a)} TLEs for Sat A")
