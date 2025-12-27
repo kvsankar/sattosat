@@ -355,9 +355,12 @@ def format_position(pos: dict) -> str:
 
 
 def is_over_alaska(lon: float, lat: float) -> bool:
-    """Check if position is roughly over Alaska."""
-    # Alaska roughly spans 130°W to 170°W, 55°N to 72°N
-    return -170 <= lon <= -130 and 55 <= lat <= 72
+    """Check if position is over Alaska including the full Aleutian chain."""
+    # Mainland Alaska + eastern Aleutians
+    mainland = -180 <= lon <= -125 and 45 <= lat <= 75
+    # Western Aleutians (past the date line)
+    western_aleutians = 165 <= lon <= 180 and 50 <= lat <= 56
+    return mainland or western_aleutians
 
 
 def main():

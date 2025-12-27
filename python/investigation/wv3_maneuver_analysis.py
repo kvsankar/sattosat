@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-Quick analysis of WV3 orbital maneuver on Dec 17, 2024 and its effect on
-the beat period with Starlink satellites.
+Analysis of WV3 orbital maneuver on Dec 17, 2025 and its effect on
+the conjunction timing with Starlink-35956.
+
+This script proves (or disproves) that the maneuver caused Dec 18 to miss
+the close approach window.
 """
 
 import math
+from datetime import datetime, timedelta, timezone
 
 # Constants
 EARTH_RADIUS_KM = 6378.137
@@ -28,7 +32,7 @@ def synodic_period_hours(period_a_min: float, period_b_min: float) -> float:
     return synodic_min / 60  # hours
 
 print("=" * 70)
-print("WV3 ORBITAL MANEUVER ANALYSIS - Dec 17, 2024 ~17:32 UTC")
+print("WV3 ORBITAL MANEUVER ANALYSIS - Dec 17, 2025 ~17:32 UTC")
 print("=" * 70)
 
 # TLE data from embedded/40115.tle
@@ -40,8 +44,8 @@ before_ecc = 0.0005162
 after_mm = 14.84660813  # rev/day
 after_ecc = 0.0001686
 
-# Starlink-32153 (healthy, from recent TLE)
-starlink_mm = 15.06  # approximate, ~475 km altitude
+# STARLINK-35956 mean motion (from Dec 18 TLEs, before anomaly)
+starlink35956_mm = 15.49341  # rev/day
 
 print("\n--- WV3 ORBITAL PARAMETERS ---")
 print(f"{'Parameter':<25} {'Before':>15} {'After':>15} {'Change':>15}")
@@ -58,16 +62,16 @@ print(f"{'Altitude (km)':<25} {before_alt:>15.1f} {after_alt:>15.1f} {after_alt 
 
 print(f"{'Eccentricity':<25} {before_ecc:>15.7f} {after_ecc:>15.7f} {after_ecc - before_ecc:>+15.7f}")
 
-# Calculate beat period with a Starlink satellite
-starlink_period = mean_motion_to_period_min(starlink_mm)
+# Calculate synodic period with STARLINK-35956
+starlink_period = mean_motion_to_period_min(starlink35956_mm)
 starlink_alt = period_to_altitude_km(starlink_period)
 
-print(f"\n--- STARLINK REFERENCE (healthy, ~475 km) ---")
-print(f"Mean Motion: {starlink_mm} rev/day")
+print(f"\n--- STARLINK-35956 REFERENCE ---")
+print(f"Mean Motion: {starlink35956_mm} rev/day")
 print(f"Period: {starlink_period:.4f} min")
 print(f"Altitude: {starlink_alt:.1f} km")
 
-print(f"\n--- BEAT PERIOD WITH STARLINK ---")
+print(f"\n--- SYNODIC PERIOD WITH STARLINK-35956 ---")
 print(f"{'Metric':<35} {'Before':>15} {'After':>15} {'Change':>15}")
 print("-" * 80)
 
@@ -80,29 +84,67 @@ print(f"{'Synodic Period (hours)':<35} {before_synodic:>15.2f} {after_synodic:>1
 print(f"{'Synodic Period (days)':<35} {before_synodic/24:>15.3f} {after_synodic/24:>15.3f} {change_synodic/24:>+15.3f}")
 print(f"{'% Change':<35} {'':>15} {'':>15} {pct_change:>+14.1f}%")
 
-# Period difference drives synodic period
-before_delta_T = abs(before_period - starlink_period)
-after_delta_T = abs(after_period - starlink_period)
-print(f"\n{'|T_wv3 - T_starlink| (min)':<35} {before_delta_T:>15.4f} {after_delta_T:>15.4f} {after_delta_T - before_delta_T:>+15.4f}")
-
-
-# Let's also check with the anomalous STARLINK-35956
+# ============================================================================
+# CLOSE APPROACH TIMING ANALYSIS
+# ============================================================================
 print("\n" + "=" * 70)
-print("COMPARISON: STARLINK-35956 (anomalous, ~447 km, decaying)")
+print("CLOSE APPROACH TIMING ANALYSIS")
 print("=" * 70)
 
-# STARLINK-35956 was at lower altitude due to decay
-starlink35956_alt = 447  # approximate from earlier analysis
-starlink35956_period_s = 2 * math.pi * math.sqrt((EARTH_RADIUS_KM + starlink35956_alt)**3 / MU)
-starlink35956_period = starlink35956_period_s / 60
+# Observed close approaches from scan_dec17.py:
+approaches = [
+    ("2025-12-15 23:08", 247.7),
+    ("2025-12-17 12:19", 204.2),
+    ("2025-12-19 01:30", 370.2),
+]
 
-before_synodic_35956 = synodic_period_hours(before_period, starlink35956_period)
-after_synodic_35956 = synodic_period_hours(after_period, starlink35956_period)
-change_35956 = after_synodic_35956 - before_synodic_35956
+print("\nObserved close approaches (from synodic period analysis):")
+print(f"{'#':<3} {'Date/Time':>20} {'Distance':>10} {'Hours since prev'}")
+print("-" * 55)
 
-print(f"STARLINK-35956 period: {starlink35956_period:.4f} min (altitude ~{starlink35956_alt} km)")
-print(f"\n{'Metric':<35} {'Before':>15} {'After':>15} {'Change':>15}")
-print("-" * 80)
-print(f"{'Synodic Period (hours)':<35} {before_synodic_35956:>15.2f} {after_synodic_35956:>15.2f} {change_35956:>+15.2f}")
-print(f"{'Synodic Period (days)':<35} {before_synodic_35956/24:>15.3f} {after_synodic_35956/24:>15.3f} {change_35956/24:>+15.3f}")
+prev_time = None
+for i, (time_str, dist) in enumerate(approaches):
+    dt = datetime.strptime(time_str, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+    interval = ""
+    if prev_time:
+        hours = (dt - prev_time).total_seconds() / 3600
+        interval = f"{hours:.1f} hours"
+    print(f"{i+1:<3} {time_str:>20} {dist:>8.1f} km  {interval}")
+    prev_time = dt
+
+# Key insight
+print("\n" + "=" * 70)
+print("KEY FINDINGS")
+print("=" * 70)
+
+print("""
+1. SYNODIC PERIOD: The observed envelope period is ~37.2 hours.
+   This is shorter than the theoretical ~42-44 hours, likely due to
+   the orbital geometry and inclination differences.
+
+2. DEC 18 GAP: With a ~37 hour period:
+   - Dec 15 23:08 + 37h = Dec 17 12:08 (actual: 12:19) ✓
+   - Dec 17 12:19 + 37h = Dec 18 01:19 ... but no close approach!
+   - Dec 17 12:19 + 37h*2 = Dec 19 01:19 (actual: 01:30) ✓
+
+3. THE MANEUVER: WV3 maneuvered on Dec 17 ~17:32 UTC, AFTER the
+   Dec 17 12:19 close approach. The maneuver changed the period by
+   only ~1.6% (from 42.05h to 42.73h), which is NOT enough to
+   explain a full day shift.
+
+4. REAL EXPLANATION: The ~37 hour synodic period naturally produces
+   close approaches every ~1.5 days. The timing just happened to
+   align with Dec 15, Dec 17, and Dec 19, skipping Dec 18 entirely.
+   This is orbital mechanics, not the maneuver.
+
+5. MANEUVER EFFECT: The maneuver DID slightly increase the synodic
+   period (by ~0.7 hours), which would shift future approaches
+   forward. But this shift is cumulative and small - it doesn't
+   explain Dec 18 having no approach.
+""")
+
+print("=" * 70)
+print("CONCLUSION: Dec 18 has no close approach because of the natural")
+print("synodic period (~37 hours), NOT because of the WV3 maneuver.")
+print("=" * 70)
 

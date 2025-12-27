@@ -28,8 +28,12 @@ DEC18_STARLINK_TLES = [
 
 
 def is_over_alaska(lon: float, lat: float) -> bool:
-    """Check if position is roughly over Alaska."""
-    return -175 <= lon <= -130 and 50 <= lat <= 72
+    """Check if position is over Alaska including the full Aleutian chain."""
+    # Mainland Alaska + eastern Aleutians
+    mainland = -180 <= lon <= -125 and 45 <= lat <= 75
+    # Western Aleutians (past the date line)
+    western_aleutians = 165 <= lon <= 180 and 50 <= lat <= 56
+    return mainland or western_aleutians
 
 
 def find_approaches_with_tle(starlink_tle: TLERecord, wv3_tles: list,
