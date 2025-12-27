@@ -274,8 +274,6 @@ uv run python python/fetch_spacetrack.py
 
 Playwright scripts for capturing documentation screenshots.
 
-### Usage Screenshots (for README/USAGE docs)
-
 ```bash
 # Start dev server first
 npm run dev &
@@ -284,16 +282,6 @@ npx tsx scripts/capture-usage-screenshots.ts
 ```
 
 **Script:** `scripts/capture-usage-screenshots.ts`
-
-### Blog Screenshots
-
-```bash
-npm run dev &
-
-npx tsx scripts/capture-blog-screenshots.ts
-```
-
-**Script:** `scripts/capture-blog-screenshots.ts`
 
 Screenshots are saved to the `screenshots/` directory.
 
