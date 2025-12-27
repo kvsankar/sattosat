@@ -20,3 +20,4 @@ scripts/test-*.ts
 .env
 .venv
 __pycache__
+reviews/
