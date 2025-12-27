@@ -14,7 +14,6 @@ On December 18, 2025, Maxar's WorldView-3 satellite reportedly captured an image
 |------|--------|---------|
 | Reproduce the 241 km distance | `verify_conjunction.py` | • **Dec 17 12:18:59 UTC: 204.2 km** at 52.9°N, 16.9°W (Atlantic Ocean)<br>• Dec 18: No approach <500 km; closest was 983 km at 23:55 UTC<br>• Dec 19 00:42:53 UTC: 383.1 km at 51.0°S, 23.6°W (South Atlantic)<br>• Dec 19 01:30:19 UTC: 350.4 km at 54.8°N, 146.0°E (Sea of Okhotsk) |
 | Confirm Alaska as location | `scan_alaska.py` | • WV3 over Alaska: Dec 18 23:54:30 UTC, 1156.7 km, WV3 at 50.3°N, 168.3°E (western Aleutians)<br>• Starlink over Alaska: Dec 18 23:56:20 UTC, 1168.0 km, Starlink at 53.2°N, 165.0°E (western Aleutians) |
-| Rule out TLE data source issues | `compare_with_spacetrack.py` | Space-Track gives identical results |
 | Check if WV3 maneuver caused shift | `wv3_maneuver_analysis.py` | Maneuver NOT the cause; natural ~37h period skips Dec 18 |
 | Check if Starlink decay explains it | `backpropagate_dec19.py` | Back-propagated TLE gives 661 km, not 241 km |
 
