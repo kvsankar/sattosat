@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/sattosat/',
+  base: './',
   resolve: {
     // Prevent accidental duplicate Three.js bundles (warns in console)
     dedupe: ['three'],
