@@ -54,8 +54,8 @@ async function propagateWithTleJs(line1: string, line2: string, time: Date) {
   return { lat: info.lat, lon: info.lng, height: info.height };
 }
 
-describe('Oracle check against independent tle.js library', () => {
-  // Networked test; allow a bit more time.
+// Networked test: hits Celestrak. Off by default; opt in with RUN_NETWORK_TESTS=1.
+describe.skipIf(!process.env.RUN_NETWORK_TESTS)('Oracle check against independent tle.js library', () => {
   vi.setConfig({ testTimeout: 15000 });
 
   it('propagates positions matching tle.js within tolerance', async () => {
